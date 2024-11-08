@@ -270,14 +270,10 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
 				auto decimalCol = std::static_pointer_cast<DecimalColumnVector>(col);
 				if (decimalCol->getPrecision() > 18) {
 					throw PixelsReaderException("Pixels reader do not support longer decimal");
-
 				}
-				char *numeric_str = (char *)palloc0(PIXELS_FDW_MAX_DEC_WIDTH + 2);
 				// lose precision
-				Datum numeric_data = DirectFunctionCall3(numeric_in,
-													 	 CStringGetDatum(numeric_str),
-													 	 ObjectIdGetDatum(InvalidOid),
-													 	 Int32GetDatum(-1));
+				Datum numeric_data = DirectFunctionCall1(float8_numeric,
+													 	 float8(*((long*)(decimalCol->current())) / std::pow(10, decimalCol->getScale())));
                 slot->tts_isnull[attr] = false;
 				slot->tts_values[attr] = numeric_data;
 			    break;
@@ -304,9 +300,6 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
     current_location++;
 	scan_data->vectorizedRowBatch->increment(1);
 	ExecStoreVirtualTuple(slot);
-	for (int attr = 0; attr < slot->tts_tupleDescriptor->natts; attr++) {
-		std::cout << slot->tts_values[attr] << std::endl;
-	}
     return true;
 }
 

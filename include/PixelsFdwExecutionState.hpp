@@ -38,6 +38,7 @@
 #include "physical/BufferPool.h"
 #include "profiler/TimeProfiler.h"
 #include "TypeDescription.h"
+#include <cmath>
 
 extern "C" {
 #include "postgres.h"

@@ -51,8 +51,9 @@ PROTOBUF_CONSTEXPR PostScript::PostScript(
   , /*decltype(_impl_.compression_)*/0
   , /*decltype(_impl_.compressionblocksize_)*/0u
   , /*decltype(_impl_.pixelstride_)*/0u
+  , /*decltype(_impl_.columnchunkalignment_)*/0u
   , /*decltype(_impl_.partitioned_)*/false
-  , /*decltype(_impl_.columnchunkalignment_)*/0u} {}
+  , /*decltype(_impl_.hashiddencolumn_)*/false} {}
 struct PostScriptDefaultTypeInternal {
   PROTOBUF_CONSTEXPR PostScriptDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -64,11 +65,15 @@ struct PostScriptDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 PostScriptDefaultTypeInternal _PostScript_default_instance_;
 PROTOBUF_CONSTEXPR Footer::Footer(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.types_)*/{}
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.types_)*/{}
   , /*decltype(_impl_.columnstats_)*/{}
   , /*decltype(_impl_.rowgroupinfos_)*/{}
   , /*decltype(_impl_.rowgroupstats_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
+  , /*decltype(_impl_.hiddenrowgroupstats_)*/{}
+  , /*decltype(_impl_.hiddentype_)*/nullptr
+  , /*decltype(_impl_.hiddencolumnstats_)*/nullptr} {}
 struct FooterDefaultTypeInternal {
   PROTOBUF_CONSTEXPR FooterDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -345,8 +350,10 @@ struct ColumnChunkIndexDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ColumnChunkIndexDefaultTypeInternal _ColumnChunkIndex_default_instance_;
 PROTOBUF_CONSTEXPR RowGroupIndex::RowGroupIndex(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.columnchunkindexentries_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.columnchunkindexentries_)*/{}
+  , /*decltype(_impl_.hiddencolumnchunkindexentry_)*/nullptr} {}
 struct RowGroupIndexDefaultTypeInternal {
   PROTOBUF_CONSTEXPR RowGroupIndexDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -358,8 +365,10 @@ struct RowGroupIndexDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RowGroupIndexDefaultTypeInternal _RowGroupIndex_default_instance_;
 PROTOBUF_CONSTEXPR RowGroupEncoding::RowGroupEncoding(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.columnchunkencodings_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.columnchunkencodings_)*/{}
+  , /*decltype(_impl_.hiddencolumnchunkencoding_)*/nullptr} {}
 struct RowGroupEncodingDefaultTypeInternal {
   PROTOBUF_CONSTEXPR RowGroupEncodingDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -436,6 +445,7 @@ const uint32_t TableStruct_pixels_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::pixels::proto::PostScript, _impl_.writertimezone_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::PostScript, _impl_.partitioned_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::PostScript, _impl_.columnchunkalignment_),
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::PostScript, _impl_.hashiddencolumn_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::PostScript, _impl_.magic_),
   3,
   2,
@@ -444,10 +454,11 @@ const uint32_t TableStruct_pixels_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   6,
   7,
   0,
-  8,
   9,
+  8,
+  10,
   1,
-  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
@@ -457,6 +468,16 @@ const uint32_t TableStruct_pixels_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_.columnstats_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_.rowgroupinfos_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_.rowgroupstats_),
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_.hiddentype_),
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_.hiddencolumnstats_),
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::Footer, _impl_.hiddenrowgroupstats_),
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  0,
+  1,
+  ~0u,
   PROTOBUF_FIELD_OFFSET(::pixels::proto::Type, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::Type, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -663,20 +684,26 @@ const uint32_t TableStruct_pixels_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   3,
   4,
   5,
-  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupIndex, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupIndex, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupIndex, _impl_.columnchunkindexentries_),
-  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupIndex, _impl_.hiddencolumnchunkindexentry_),
+  ~0u,
+  0,
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupEncoding, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupEncoding, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupEncoding, _impl_.columnchunkencodings_),
+  PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupEncoding, _impl_.hiddencolumnchunkencoding_),
+  ~0u,
+  0,
   PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupFooter, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::pixels::proto::RowGroupFooter, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -702,28 +729,28 @@ const uint32_t TableStruct_pixels_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 10, -1, sizeof(::pixels::proto::FileTail)},
-  { 14, 30, -1, sizeof(::pixels::proto::PostScript)},
-  { 40, -1, -1, sizeof(::pixels::proto::Footer)},
-  { 50, 63, -1, sizeof(::pixels::proto::Type)},
-  { 70, 78, -1, sizeof(::pixels::proto::PartitionInformation)},
-  { 80, 91, -1, sizeof(::pixels::proto::RowGroupInformation)},
-  { 96, -1, -1, sizeof(::pixels::proto::RowGroupStatistic)},
-  { 103, 112, -1, sizeof(::pixels::proto::IntegerStatistic)},
-  { 115, 125, -1, sizeof(::pixels::proto::Integer128Statistic)},
-  { 129, 138, -1, sizeof(::pixels::proto::DoubleStatistic)},
-  { 141, 150, -1, sizeof(::pixels::proto::StringStatistic)},
-  { 153, -1, -1, sizeof(::pixels::proto::BucketStatistic)},
-  { 160, 168, -1, sizeof(::pixels::proto::TimestampStatistic)},
-  { 170, 178, -1, sizeof(::pixels::proto::DateStatistic)},
-  { 180, 188, -1, sizeof(::pixels::proto::TimeStatistic)},
-  { 190, 197, -1, sizeof(::pixels::proto::BinaryStatistic)},
-  { 198, 215, -1, sizeof(::pixels::proto::ColumnStatistic)},
-  { 226, 233, -1, sizeof(::pixels::proto::PixelStatistic)},
-  { 234, 248, -1, sizeof(::pixels::proto::ColumnChunkIndex)},
-  { 256, -1, -1, sizeof(::pixels::proto::RowGroupIndex)},
-  { 263, -1, -1, sizeof(::pixels::proto::RowGroupEncoding)},
-  { 270, 278, -1, sizeof(::pixels::proto::RowGroupFooter)},
-  { 280, 289, -1, sizeof(::pixels::proto::ColumnEncoding)},
+  { 14, 31, -1, sizeof(::pixels::proto::PostScript)},
+  { 42, 55, -1, sizeof(::pixels::proto::Footer)},
+  { 62, 75, -1, sizeof(::pixels::proto::Type)},
+  { 82, 90, -1, sizeof(::pixels::proto::PartitionInformation)},
+  { 92, 103, -1, sizeof(::pixels::proto::RowGroupInformation)},
+  { 108, -1, -1, sizeof(::pixels::proto::RowGroupStatistic)},
+  { 115, 124, -1, sizeof(::pixels::proto::IntegerStatistic)},
+  { 127, 137, -1, sizeof(::pixels::proto::Integer128Statistic)},
+  { 141, 150, -1, sizeof(::pixels::proto::DoubleStatistic)},
+  { 153, 162, -1, sizeof(::pixels::proto::StringStatistic)},
+  { 165, -1, -1, sizeof(::pixels::proto::BucketStatistic)},
+  { 172, 180, -1, sizeof(::pixels::proto::TimestampStatistic)},
+  { 182, 190, -1, sizeof(::pixels::proto::DateStatistic)},
+  { 192, 200, -1, sizeof(::pixels::proto::TimeStatistic)},
+  { 202, 209, -1, sizeof(::pixels::proto::BinaryStatistic)},
+  { 210, 227, -1, sizeof(::pixels::proto::ColumnStatistic)},
+  { 238, 245, -1, sizeof(::pixels::proto::PixelStatistic)},
+  { 246, 260, -1, sizeof(::pixels::proto::ColumnChunkIndex)},
+  { 268, 276, -1, sizeof(::pixels::proto::RowGroupIndex)},
+  { 278, 286, -1, sizeof(::pixels::proto::RowGroupEncoding)},
+  { 288, 296, -1, sizeof(::pixels::proto::RowGroupFooter)},
+  { 298, 307, -1, sizeof(::pixels::proto::ColumnEncoding)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -757,91 +784,99 @@ const char descriptor_table_protodef_pixels_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "l\022$\n\006footer\030\001 \001(\0132\024.pixels.proto.Footer\022"
   ",\n\npostscript\030\002 \001(\0132\030.pixels.proto.PostS"
   "cript\022\024\n\014footerLength\030\003 \001(\r\022\030\n\020postscrip"
-  "tLength\030\004 \001(\r\"\214\002\n\nPostScript\022\017\n\007version\030"
+  "tLength\030\004 \001(\r\"\245\002\n\nPostScript\022\017\n\007version\030"
   "\001 \001(\r\022\025\n\rcontentLength\030\002 \001(\004\022\024\n\014numberOf"
   "Rows\030\003 \001(\r\0222\n\013compression\030\004 \001(\0162\035.pixels"
   ".proto.CompressionKind\022\034\n\024compressionBlo"
   "ckSize\030\005 \001(\r\022\023\n\013pixelStride\030\006 \001(\r\022\026\n\016wri"
   "terTimezone\030\007 \001(\t\022\023\n\013partitioned\030\010 \001(\010\022\034"
-  "\n\024columnChunkAlignment\030\t \001(\r\022\016\n\005magic\030\300>"
-  " \001(\t\"\321\001\n\006Footer\022!\n\005types\030\001 \003(\0132\022.pixels."
-  "proto.Type\0222\n\013columnStats\030\002 \003(\0132\035.pixels"
-  ".proto.ColumnStatistic\0228\n\rrowGroupInfos\030"
-  "\003 \003(\0132!.pixels.proto.RowGroupInformation"
-  "\0226\n\rrowGroupStats\030\004 \003(\0132\037.pixels.proto.R"
-  "owGroupStatistic\"\214\003\n\004Type\022%\n\004kind\030\001 \001(\0162"
-  "\027.pixels.proto.Type.Kind\022\014\n\004name\030\002 \001(\t\022\024"
-  "\n\010subtypes\030\003 \003(\rB\002\020\001\022\025\n\rmaximumLength\030\004 "
-  "\001(\r\022\021\n\tprecision\030\005 \001(\r\022\r\n\005scale\030\006 \001(\r\022\021\n"
-  "\tdimension\030\007 \001(\r\"\354\001\n\004Kind\022\013\n\007BOOLEAN\020\000\022\010"
-  "\n\004BYTE\020\001\022\t\n\005SHORT\020\002\022\007\n\003INT\020\003\022\010\n\004LONG\020\004\022\t"
-  "\n\005FLOAT\020\005\022\n\n\006DOUBLE\020\006\022\n\n\006STRING\020\007\022\n\n\006BIN"
-  "ARY\020\010\022\r\n\tTIMESTAMP\020\t\022\t\n\005ARRAY\020\n\022\007\n\003MAP\020\013"
-  "\022\n\n\006STRUCT\020\014\022\r\n\tVARBINARY\020\r\022\013\n\007DECIMAL\020\016"
-  "\022\010\n\004DATE\020\017\022\013\n\007VARCHAR\020\020\022\010\n\004CHAR\020\021\022\010\n\004TIM"
-  "E\020\022\022\n\n\006VECTOR\020\023\"<\n\024PartitionInformation\022"
-  "\021\n\tcolumnIds\030\001 \003(\r\022\021\n\thashValue\030\002 \001(\005\"\246\001"
-  "\n\023RowGroupInformation\022\024\n\014footerOffset\030\001 "
-  "\001(\004\022\022\n\ndataLength\030\002 \001(\r\022\024\n\014footerLength\030"
-  "\003 \001(\r\022\024\n\014numberOfRows\030\004 \001(\004\0229\n\rpartition"
-  "Info\030\005 \001(\0132\".pixels.proto.PartitionInfor"
-  "mation\"L\n\021RowGroupStatistic\0227\n\020columnChu"
-  "nkStats\030\001 \003(\0132\035.pixels.proto.ColumnStati"
-  "stic\"A\n\020IntegerStatistic\022\017\n\007minimum\030\001 \001("
-  "\022\022\017\n\007maximum\030\002 \001(\022\022\013\n\003sum\030\003 \001(\022\"k\n\023Integ"
-  "er128Statistic\022\024\n\014minimum_high\030\001 \001(\004\022\023\n\013"
-  "minimum_low\030\002 \001(\004\022\024\n\014maximum_high\030\003 \001(\022\022"
-  "\023\n\013maximum_low\030\004 \001(\022\"@\n\017DoubleStatistic\022"
-  "\017\n\007minimum\030\001 \001(\001\022\017\n\007maximum\030\002 \001(\001\022\013\n\003sum"
-  "\030\003 \001(\001\"@\n\017StringStatistic\022\017\n\007minimum\030\001 \001"
-  "(\t\022\017\n\007maximum\030\002 \001(\t\022\013\n\003sum\030\003 \001(\022\"$\n\017Buck"
-  "etStatistic\022\021\n\005count\030\001 \003(\004B\002\020\001\"6\n\022Timest"
-  "ampStatistic\022\017\n\007minimum\030\001 \001(\022\022\017\n\007maximum"
-  "\030\002 \001(\022\"1\n\rDateStatistic\022\017\n\007minimum\030\001 \001(\021"
-  "\022\017\n\007maximum\030\002 \001(\021\"1\n\rTimeStatistic\022\017\n\007mi"
-  "nimum\030\001 \001(\021\022\017\n\007maximum\030\002 \001(\021\"\036\n\017BinarySt"
-  "atistic\022\013\n\003sum\030\001 \001(\022\"\273\004\n\017ColumnStatistic"
-  "\022\026\n\016numberOfValues\030\001 \001(\004\0225\n\rintStatistic"
-  "s\030\002 \001(\0132\036.pixels.proto.IntegerStatistic\022"
-  "7\n\020doubleStatistics\030\003 \001(\0132\035.pixels.proto"
-  ".DoubleStatistic\0227\n\020stringStatistics\030\004 \001"
-  "(\0132\035.pixels.proto.StringStatistic\0227\n\020buc"
-  "ketStatistics\030\005 \001(\0132\035.pixels.proto.Bucke"
-  "tStatistic\0227\n\020binaryStatistics\030\006 \001(\0132\035.p"
-  "ixels.proto.BinaryStatistic\022=\n\023timestamp"
-  "Statistics\030\007 \001(\0132 .pixels.proto.Timestam"
-  "pStatistic\0223\n\016dateStatistics\030\t \001(\0132\033.pix"
-  "els.proto.DateStatistic\0223\n\016timeStatistic"
-  "s\030\n \001(\0132\033.pixels.proto.TimeStatistic\022;\n\020"
-  "int128Statistics\030\013 \001(\0132!.pixels.proto.In"
-  "teger128Statistic\022\017\n\007hasNull\030\010 \001(\010\"B\n\016Pi"
-  "xelStatistic\0220\n\tstatistic\030\001 \001(\0132\035.pixels"
-  ".proto.ColumnStatistic\"\352\001\n\020ColumnChunkIn"
-  "dex\022\023\n\013chunkOffset\030\001 \001(\004\022\023\n\013chunkLength\030"
-  "\002 \001(\r\022\024\n\014isNullOffset\030\003 \001(\r\022\032\n\016pixelPosi"
-  "tions\030\004 \003(\rB\002\020\001\0225\n\017pixelStatistics\030\005 \003(\013"
-  "2\034.pixels.proto.PixelStatistic\022\024\n\014little"
-  "Endian\030\006 \001(\010\022\024\n\014nullsPadding\030\007 \001(\010\022\027\n\017is"
-  "NullAlignment\030\010 \001(\r\"P\n\rRowGroupIndex\022\?\n\027"
-  "columnChunkIndexEntries\030\001 \003(\0132\036.pixels.p"
-  "roto.ColumnChunkIndex\"N\n\020RowGroupEncodin"
-  "g\022:\n\024columnChunkEncodings\030\001 \003(\0132\034.pixels"
-  ".proto.ColumnEncoding\"\203\001\n\016RowGroupFooter"
-  "\0227\n\022rowGroupIndexEntry\030\001 \001(\0132\033.pixels.pr"
-  "oto.RowGroupIndex\0228\n\020rowGroupEncoding\030\002 "
-  "\001(\0132\036.pixels.proto.RowGroupEncoding\"\301\001\n\016"
-  "ColumnEncoding\022/\n\004kind\030\001 \002(\0162!.pixels.pr"
-  "oto.ColumnEncoding.Kind\022\026\n\016dictionarySiz"
-  "e\030\002 \001(\r\0225\n\017cascadeEncoding\030\003 \001(\0132\034.pixel"
-  "s.proto.ColumnEncoding\"/\n\004Kind\022\010\n\004NONE\020\000"
-  "\022\r\n\tRUNLENGTH\020\001\022\016\n\nDICTIONARY\020\002*M\n\017Compr"
-  "essionKind\022\010\n\004NONE\020\000\022\010\n\004ZLIB\020\001\022\n\n\006SNAPPY"
-  "\020\002\022\007\n\003LZO\020\003\022\007\n\003LZ4\020\004\022\010\n\004ZSTD\020\005B&\n\027io.pix"
-  "elsdb.pixels.coreB\013PixelsProto"
+  "\n\024columnChunkAlignment\030\t \001(\r\022\027\n\017hasHidde"
+  "nColumn\030\n \001(\010\022\016\n\005magic\030\300> \001(\t\"\357\002\n\006Footer"
+  "\022!\n\005types\030\001 \003(\0132\022.pixels.proto.Type\0222\n\013c"
+  "olumnStats\030\002 \003(\0132\035.pixels.proto.ColumnSt"
+  "atistic\0228\n\rrowGroupInfos\030\003 \003(\0132!.pixels."
+  "proto.RowGroupInformation\0226\n\rrowGroupSta"
+  "ts\030\004 \003(\0132\037.pixels.proto.RowGroupStatisti"
+  "c\022&\n\nhiddenType\030\005 \001(\0132\022.pixels.proto.Typ"
+  "e\0228\n\021hiddenColumnStats\030\006 \001(\0132\035.pixels.pr"
+  "oto.ColumnStatistic\022:\n\023hiddenRowGroupSta"
+  "ts\030\007 \003(\0132\035.pixels.proto.ColumnStatistic\""
+  "\214\003\n\004Type\022%\n\004kind\030\001 \001(\0162\027.pixels.proto.Ty"
+  "pe.Kind\022\014\n\004name\030\002 \001(\t\022\024\n\010subtypes\030\003 \003(\rB"
+  "\002\020\001\022\025\n\rmaximumLength\030\004 \001(\r\022\021\n\tprecision\030"
+  "\005 \001(\r\022\r\n\005scale\030\006 \001(\r\022\021\n\tdimension\030\007 \001(\r\""
+  "\354\001\n\004Kind\022\013\n\007BOOLEAN\020\000\022\010\n\004BYTE\020\001\022\t\n\005SHORT"
+  "\020\002\022\007\n\003INT\020\003\022\010\n\004LONG\020\004\022\t\n\005FLOAT\020\005\022\n\n\006DOUB"
+  "LE\020\006\022\n\n\006STRING\020\007\022\n\n\006BINARY\020\010\022\r\n\tTIMESTAM"
+  "P\020\t\022\t\n\005ARRAY\020\n\022\007\n\003MAP\020\013\022\n\n\006STRUCT\020\014\022\r\n\tV"
+  "ARBINARY\020\r\022\013\n\007DECIMAL\020\016\022\010\n\004DATE\020\017\022\013\n\007VAR"
+  "CHAR\020\020\022\010\n\004CHAR\020\021\022\010\n\004TIME\020\022\022\n\n\006VECTOR\020\023\"<"
+  "\n\024PartitionInformation\022\021\n\tcolumnIds\030\001 \003("
+  "\r\022\021\n\thashValue\030\002 \001(\005\"\246\001\n\023RowGroupInforma"
+  "tion\022\024\n\014footerOffset\030\001 \001(\004\022\022\n\ndataLength"
+  "\030\002 \001(\r\022\024\n\014footerLength\030\003 \001(\r\022\024\n\014numberOf"
+  "Rows\030\004 \001(\004\0229\n\rpartitionInfo\030\005 \001(\0132\".pixe"
+  "ls.proto.PartitionInformation\"L\n\021RowGrou"
+  "pStatistic\0227\n\020columnChunkStats\030\001 \003(\0132\035.p"
+  "ixels.proto.ColumnStatistic\"A\n\020IntegerSt"
+  "atistic\022\017\n\007minimum\030\001 \001(\022\022\017\n\007maximum\030\002 \001("
+  "\022\022\013\n\003sum\030\003 \001(\022\"k\n\023Integer128Statistic\022\024\n"
+  "\014minimum_high\030\001 \001(\004\022\023\n\013minimum_low\030\002 \001(\004"
+  "\022\024\n\014maximum_high\030\003 \001(\022\022\023\n\013maximum_low\030\004 "
+  "\001(\022\"@\n\017DoubleStatistic\022\017\n\007minimum\030\001 \001(\001\022"
+  "\017\n\007maximum\030\002 \001(\001\022\013\n\003sum\030\003 \001(\001\"@\n\017StringS"
+  "tatistic\022\017\n\007minimum\030\001 \001(\t\022\017\n\007maximum\030\002 \001"
+  "(\t\022\013\n\003sum\030\003 \001(\022\"$\n\017BucketStatistic\022\021\n\005co"
+  "unt\030\001 \003(\004B\002\020\001\"6\n\022TimestampStatistic\022\017\n\007m"
+  "inimum\030\001 \001(\022\022\017\n\007maximum\030\002 \001(\022\"1\n\rDateSta"
+  "tistic\022\017\n\007minimum\030\001 \001(\021\022\017\n\007maximum\030\002 \001(\021"
+  "\"1\n\rTimeStatistic\022\017\n\007minimum\030\001 \001(\021\022\017\n\007ma"
+  "ximum\030\002 \001(\021\"\036\n\017BinaryStatistic\022\013\n\003sum\030\001 "
+  "\001(\022\"\273\004\n\017ColumnStatistic\022\026\n\016numberOfValue"
+  "s\030\001 \001(\004\0225\n\rintStatistics\030\002 \001(\0132\036.pixels."
+  "proto.IntegerStatistic\0227\n\020doubleStatisti"
+  "cs\030\003 \001(\0132\035.pixels.proto.DoubleStatistic\022"
+  "7\n\020stringStatistics\030\004 \001(\0132\035.pixels.proto"
+  ".StringStatistic\0227\n\020bucketStatistics\030\005 \001"
+  "(\0132\035.pixels.proto.BucketStatistic\0227\n\020bin"
+  "aryStatistics\030\006 \001(\0132\035.pixels.proto.Binar"
+  "yStatistic\022=\n\023timestampStatistics\030\007 \001(\0132"
+  " .pixels.proto.TimestampStatistic\0223\n\016dat"
+  "eStatistics\030\t \001(\0132\033.pixels.proto.DateSta"
+  "tistic\0223\n\016timeStatistics\030\n \001(\0132\033.pixels."
+  "proto.TimeStatistic\022;\n\020int128Statistics\030"
+  "\013 \001(\0132!.pixels.proto.Integer128Statistic"
+  "\022\017\n\007hasNull\030\010 \001(\010\"B\n\016PixelStatistic\0220\n\ts"
+  "tatistic\030\001 \001(\0132\035.pixels.proto.ColumnStat"
+  "istic\"\352\001\n\020ColumnChunkIndex\022\023\n\013chunkOffse"
+  "t\030\001 \001(\004\022\023\n\013chunkLength\030\002 \001(\r\022\024\n\014isNullOf"
+  "fset\030\003 \001(\r\022\032\n\016pixelPositions\030\004 \003(\rB\002\020\001\0225"
+  "\n\017pixelStatistics\030\005 \003(\0132\034.pixels.proto.P"
+  "ixelStatistic\022\024\n\014littleEndian\030\006 \001(\010\022\024\n\014n"
+  "ullsPadding\030\007 \001(\010\022\027\n\017isNullAlignment\030\010 \001"
+  "(\r\"\225\001\n\rRowGroupIndex\022\?\n\027columnChunkIndex"
+  "Entries\030\001 \003(\0132\036.pixels.proto.ColumnChunk"
+  "Index\022C\n\033hiddenColumnChunkIndexEntry\030\002 \001"
+  "(\0132\036.pixels.proto.ColumnChunkIndex\"\217\001\n\020R"
+  "owGroupEncoding\022:\n\024columnChunkEncodings\030"
+  "\001 \003(\0132\034.pixels.proto.ColumnEncoding\022\?\n\031h"
+  "iddenColumnChunkEncoding\030\002 \001(\0132\034.pixels."
+  "proto.ColumnEncoding\"\203\001\n\016RowGroupFooter\022"
+  "7\n\022rowGroupIndexEntry\030\001 \001(\0132\033.pixels.pro"
+  "to.RowGroupIndex\0228\n\020rowGroupEncoding\030\002 \001"
+  "(\0132\036.pixels.proto.RowGroupEncoding\"\301\001\n\016C"
+  "olumnEncoding\022/\n\004kind\030\001 \002(\0162!.pixels.pro"
+  "to.ColumnEncoding.Kind\022\026\n\016dictionarySize"
+  "\030\002 \001(\r\0225\n\017cascadeEncoding\030\003 \001(\0132\034.pixels"
+  ".proto.ColumnEncoding\"/\n\004Kind\022\010\n\004NONE\020\000\022"
+  "\r\n\tRUNLENGTH\020\001\022\016\n\nDICTIONARY\020\002*M\n\017Compre"
+  "ssionKind\022\010\n\004NONE\020\000\022\010\n\004ZLIB\020\001\022\n\n\006SNAPPY\020"
+  "\002\022\007\n\003LZO\020\003\022\007\n\003LZ4\020\004\022\010\n\004ZSTD\020\005B&\n\027io.pixe"
+  "lsdb.pixels.coreB\013PixelsProto"
   ;
 static ::_pbi::once_flag descriptor_table_pixels_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_pixels_2eproto = {
-    false, false, 3390, descriptor_table_protodef_pixels_2eproto,
+    false, false, 3709, descriptor_table_protodef_pixels_2eproto,
     "pixels.proto",
     &descriptor_table_pixels_2eproto_once, nullptr, 0, 23,
     schemas, file_default_instances, TableStruct_pixels_2eproto::offsets,
@@ -1309,10 +1344,13 @@ class PostScript::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_partitioned(HasBits* has_bits) {
-    (*has_bits)[0] |= 256u;
+    (*has_bits)[0] |= 512u;
   }
   static void set_has_columnchunkalignment(HasBits* has_bits) {
-    (*has_bits)[0] |= 512u;
+    (*has_bits)[0] |= 256u;
+  }
+  static void set_has_hashiddencolumn(HasBits* has_bits) {
+    (*has_bits)[0] |= 1024u;
   }
   static void set_has_magic(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
@@ -1339,8 +1377,9 @@ PostScript::PostScript(const PostScript& from)
     , decltype(_impl_.compression_){}
     , decltype(_impl_.compressionblocksize_){}
     , decltype(_impl_.pixelstride_){}
+    , decltype(_impl_.columnchunkalignment_){}
     , decltype(_impl_.partitioned_){}
-    , decltype(_impl_.columnchunkalignment_){}};
+    , decltype(_impl_.hashiddencolumn_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.writertimezone_.InitDefault();
@@ -1360,8 +1399,8 @@ PostScript::PostScript(const PostScript& from)
       _this->GetArenaForAllocation());
   }
   ::memcpy(&_impl_.contentlength_, &from._impl_.contentlength_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.columnchunkalignment_) -
-    reinterpret_cast<char*>(&_impl_.contentlength_)) + sizeof(_impl_.columnchunkalignment_));
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.hashiddencolumn_) -
+    reinterpret_cast<char*>(&_impl_.contentlength_)) + sizeof(_impl_.hashiddencolumn_));
   // @@protoc_insertion_point(copy_constructor:pixels.proto.PostScript)
 }
 
@@ -1380,8 +1419,9 @@ inline void PostScript::SharedCtor(
     , decltype(_impl_.compression_){0}
     , decltype(_impl_.compressionblocksize_){0u}
     , decltype(_impl_.pixelstride_){0u}
-    , decltype(_impl_.partitioned_){false}
     , decltype(_impl_.columnchunkalignment_){0u}
+    , decltype(_impl_.partitioned_){false}
+    , decltype(_impl_.hashiddencolumn_){false}
   };
   _impl_.writertimezone_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1432,10 +1472,10 @@ void PostScript::Clear() {
         reinterpret_cast<char*>(&_impl_.pixelstride_) -
         reinterpret_cast<char*>(&_impl_.contentlength_)) + sizeof(_impl_.pixelstride_));
   }
-  if (cached_has_bits & 0x00000300u) {
-    ::memset(&_impl_.partitioned_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&_impl_.columnchunkalignment_) -
-        reinterpret_cast<char*>(&_impl_.partitioned_)) + sizeof(_impl_.columnchunkalignment_));
+  if (cached_has_bits & 0x00000700u) {
+    ::memset(&_impl_.columnchunkalignment_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.hashiddencolumn_) -
+        reinterpret_cast<char*>(&_impl_.columnchunkalignment_)) + sizeof(_impl_.hashiddencolumn_));
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -1536,6 +1576,15 @@ const char* PostScript::_InternalParse(const char* ptr, ::_pbi::ParseContext* ct
         } else
           goto handle_unusual;
         continue;
+      // optional bool hasHiddenColumn = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _Internal::set_has_hashiddencolumn(&has_bits);
+          _impl_.hashiddencolumn_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
       // optional string magic = 8000;
       case 8000:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 2)) {
@@ -1627,15 +1676,21 @@ uint8_t* PostScript::_InternalSerialize(
   }
 
   // optional bool partitioned = 8;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000200u) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteBoolToArray(8, this->_internal_partitioned(), target);
   }
 
   // optional uint32 columnChunkAlignment = 9;
-  if (cached_has_bits & 0x00000200u) {
+  if (cached_has_bits & 0x00000100u) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteUInt32ToArray(9, this->_internal_columnchunkalignment(), target);
+  }
+
+  // optional bool hasHiddenColumn = 10;
+  if (cached_has_bits & 0x00000400u) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(10, this->_internal_hashiddencolumn(), target);
   }
 
   // optional string magic = 8000;
@@ -1712,15 +1767,20 @@ size_t PostScript::ByteSizeLong() const {
     }
 
   }
-  if (cached_has_bits & 0x00000300u) {
-    // optional bool partitioned = 8;
+  if (cached_has_bits & 0x00000700u) {
+    // optional uint32 columnChunkAlignment = 9;
     if (cached_has_bits & 0x00000100u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_columnchunkalignment());
+    }
+
+    // optional bool partitioned = 8;
+    if (cached_has_bits & 0x00000200u) {
       total_size += 1 + 1;
     }
 
-    // optional uint32 columnChunkAlignment = 9;
-    if (cached_has_bits & 0x00000200u) {
-      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_columnchunkalignment());
+    // optional bool hasHiddenColumn = 10;
+    if (cached_has_bits & 0x00000400u) {
+      total_size += 1 + 1;
     }
 
   }
@@ -1770,12 +1830,15 @@ void PostScript::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PRO
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
   }
-  if (cached_has_bits & 0x00000300u) {
+  if (cached_has_bits & 0x00000700u) {
     if (cached_has_bits & 0x00000100u) {
-      _this->_impl_.partitioned_ = from._impl_.partitioned_;
+      _this->_impl_.columnchunkalignment_ = from._impl_.columnchunkalignment_;
     }
     if (cached_has_bits & 0x00000200u) {
-      _this->_impl_.columnchunkalignment_ = from._impl_.columnchunkalignment_;
+      _this->_impl_.partitioned_ = from._impl_.partitioned_;
+    }
+    if (cached_has_bits & 0x00000400u) {
+      _this->_impl_.hashiddencolumn_ = from._impl_.hashiddencolumn_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
   }
@@ -1808,8 +1871,8 @@ void PostScript::InternalSwap(PostScript* other) {
       &other->_impl_.magic_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(PostScript, _impl_.columnchunkalignment_)
-      + sizeof(PostScript::_impl_.columnchunkalignment_)
+      PROTOBUF_FIELD_OFFSET(PostScript, _impl_.hashiddencolumn_)
+      + sizeof(PostScript::_impl_.hashiddencolumn_)
       - PROTOBUF_FIELD_OFFSET(PostScript, _impl_.contentlength_)>(
           reinterpret_cast<char*>(&_impl_.contentlength_),
           reinterpret_cast<char*>(&other->_impl_.contentlength_));
@@ -1825,8 +1888,25 @@ void PostScript::InternalSwap(PostScript* other) {
 
 class Footer::_Internal {
  public:
+  using HasBits = decltype(std::declval<Footer>()._impl_._has_bits_);
+  static const ::pixels::proto::Type& hiddentype(const Footer* msg);
+  static void set_has_hiddentype(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static const ::pixels::proto::ColumnStatistic& hiddencolumnstats(const Footer* msg);
+  static void set_has_hiddencolumnstats(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
 };
 
+const ::pixels::proto::Type&
+Footer::_Internal::hiddentype(const Footer* msg) {
+  return *msg->_impl_.hiddentype_;
+}
+const ::pixels::proto::ColumnStatistic&
+Footer::_Internal::hiddencolumnstats(const Footer* msg) {
+  return *msg->_impl_.hiddencolumnstats_;
+}
 Footer::Footer(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
@@ -1837,13 +1917,23 @@ Footer::Footer(const Footer& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   Footer* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_.types_){from._impl_.types_}
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.types_){from._impl_.types_}
     , decltype(_impl_.columnstats_){from._impl_.columnstats_}
     , decltype(_impl_.rowgroupinfos_){from._impl_.rowgroupinfos_}
     , decltype(_impl_.rowgroupstats_){from._impl_.rowgroupstats_}
-    , /*decltype(_impl_._cached_size_)*/{}};
+    , decltype(_impl_.hiddenrowgroupstats_){from._impl_.hiddenrowgroupstats_}
+    , decltype(_impl_.hiddentype_){nullptr}
+    , decltype(_impl_.hiddencolumnstats_){nullptr}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  if (from._internal_has_hiddentype()) {
+    _this->_impl_.hiddentype_ = new ::pixels::proto::Type(*from._impl_.hiddentype_);
+  }
+  if (from._internal_has_hiddencolumnstats()) {
+    _this->_impl_.hiddencolumnstats_ = new ::pixels::proto::ColumnStatistic(*from._impl_.hiddencolumnstats_);
+  }
   // @@protoc_insertion_point(copy_constructor:pixels.proto.Footer)
 }
 
@@ -1852,11 +1942,15 @@ inline void Footer::SharedCtor(
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_.types_){arena}
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.types_){arena}
     , decltype(_impl_.columnstats_){arena}
     , decltype(_impl_.rowgroupinfos_){arena}
     , decltype(_impl_.rowgroupstats_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.hiddenrowgroupstats_){arena}
+    , decltype(_impl_.hiddentype_){nullptr}
+    , decltype(_impl_.hiddencolumnstats_){nullptr}
   };
 }
 
@@ -1875,6 +1969,9 @@ inline void Footer::SharedDtor() {
   _impl_.columnstats_.~RepeatedPtrField();
   _impl_.rowgroupinfos_.~RepeatedPtrField();
   _impl_.rowgroupstats_.~RepeatedPtrField();
+  _impl_.hiddenrowgroupstats_.~RepeatedPtrField();
+  if (this != internal_default_instance()) delete _impl_.hiddentype_;
+  if (this != internal_default_instance()) delete _impl_.hiddencolumnstats_;
 }
 
 void Footer::SetCachedSize(int size) const {
@@ -1891,11 +1988,25 @@ void Footer::Clear() {
   _impl_.columnstats_.Clear();
   _impl_.rowgroupinfos_.Clear();
   _impl_.rowgroupstats_.Clear();
+  _impl_.hiddenrowgroupstats_.Clear();
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      GOOGLE_DCHECK(_impl_.hiddentype_ != nullptr);
+      _impl_.hiddentype_->Clear();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      GOOGLE_DCHECK(_impl_.hiddencolumnstats_ != nullptr);
+      _impl_.hiddencolumnstats_->Clear();
+    }
+  }
+  _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* Footer::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
@@ -1952,6 +2063,35 @@ const char* Footer::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
+      // optional .pixels.proto.Type hiddenType = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          ptr = ctx->ParseMessage(_internal_mutable_hiddentype(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional .pixels.proto.ColumnStatistic hiddenColumnStats = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          ptr = ctx->ParseMessage(_internal_mutable_hiddencolumnstats(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated .pixels.proto.ColumnStatistic hiddenRowGroupStats = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            ptr = ctx->ParseMessage(_internal_add_hiddenrowgroupstats(), ptr);
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<58>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
       default:
         goto handle_unusual;
     }  // switch
@@ -1968,6 +2108,7 @@ const char* Footer::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
     CHK_(ptr != nullptr);
   }  // while
 message_done:
+  _impl_._has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
@@ -2011,6 +2152,29 @@ uint8_t* Footer::_InternalSerialize(
     const auto& repfield = this->_internal_rowgroupstats(i);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
         InternalWriteMessage(4, repfield, repfield.GetCachedSize(), target, stream);
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  // optional .pixels.proto.Type hiddenType = 5;
+  if (cached_has_bits & 0x00000001u) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(5, _Internal::hiddentype(this),
+        _Internal::hiddentype(this).GetCachedSize(), target, stream);
+  }
+
+  // optional .pixels.proto.ColumnStatistic hiddenColumnStats = 6;
+  if (cached_has_bits & 0x00000002u) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(6, _Internal::hiddencolumnstats(this),
+        _Internal::hiddencolumnstats(this).GetCachedSize(), target, stream);
+  }
+
+  // repeated .pixels.proto.ColumnStatistic hiddenRowGroupStats = 7;
+  for (unsigned i = 0,
+      n = static_cast<unsigned>(this->_internal_hiddenrowgroupstats_size()); i < n; i++) {
+    const auto& repfield = this->_internal_hiddenrowgroupstats(i);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+        InternalWriteMessage(7, repfield, repfield.GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -2057,6 +2221,30 @@ size_t Footer::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
+  // repeated .pixels.proto.ColumnStatistic hiddenRowGroupStats = 7;
+  total_size += 1UL * this->_internal_hiddenrowgroupstats_size();
+  for (const auto& msg : this->_impl_.hiddenrowgroupstats_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional .pixels.proto.Type hiddenType = 5;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+          *_impl_.hiddentype_);
+    }
+
+    // optional .pixels.proto.ColumnStatistic hiddenColumnStats = 6;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+          *_impl_.hiddencolumnstats_);
+    }
+
+  }
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -2079,6 +2267,18 @@ void Footer::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBU
   _this->_impl_.columnstats_.MergeFrom(from._impl_.columnstats_);
   _this->_impl_.rowgroupinfos_.MergeFrom(from._impl_.rowgroupinfos_);
   _this->_impl_.rowgroupstats_.MergeFrom(from._impl_.rowgroupstats_);
+  _this->_impl_.hiddenrowgroupstats_.MergeFrom(from._impl_.hiddenrowgroupstats_);
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_mutable_hiddentype()->::pixels::proto::Type::MergeFrom(
+          from._internal_hiddentype());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_mutable_hiddencolumnstats()->::pixels::proto::ColumnStatistic::MergeFrom(
+          from._internal_hiddencolumnstats());
+    }
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -2096,10 +2296,18 @@ bool Footer::IsInitialized() const {
 void Footer::InternalSwap(Footer* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   _impl_.types_.InternalSwap(&other->_impl_.types_);
   _impl_.columnstats_.InternalSwap(&other->_impl_.columnstats_);
   _impl_.rowgroupinfos_.InternalSwap(&other->_impl_.rowgroupinfos_);
   _impl_.rowgroupstats_.InternalSwap(&other->_impl_.rowgroupstats_);
+  _impl_.hiddenrowgroupstats_.InternalSwap(&other->_impl_.hiddenrowgroupstats_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(Footer, _impl_.hiddencolumnstats_)
+      + sizeof(Footer::_impl_.hiddencolumnstats_)
+      - PROTOBUF_FIELD_OFFSET(Footer, _impl_.hiddentype_)>(
+          reinterpret_cast<char*>(&_impl_.hiddentype_),
+          reinterpret_cast<char*>(&other->_impl_.hiddentype_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata Footer::GetMetadata() const {
@@ -6794,8 +7002,17 @@ void ColumnChunkIndex::InternalSwap(ColumnChunkIndex* other) {
 
 class RowGroupIndex::_Internal {
  public:
+  using HasBits = decltype(std::declval<RowGroupIndex>()._impl_._has_bits_);
+  static const ::pixels::proto::ColumnChunkIndex& hiddencolumnchunkindexentry(const RowGroupIndex* msg);
+  static void set_has_hiddencolumnchunkindexentry(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
 };
 
+const ::pixels::proto::ColumnChunkIndex&
+RowGroupIndex::_Internal::hiddencolumnchunkindexentry(const RowGroupIndex* msg) {
+  return *msg->_impl_.hiddencolumnchunkindexentry_;
+}
 RowGroupIndex::RowGroupIndex(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
@@ -6806,10 +7023,15 @@ RowGroupIndex::RowGroupIndex(const RowGroupIndex& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   RowGroupIndex* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_.columnchunkindexentries_){from._impl_.columnchunkindexentries_}
-    , /*decltype(_impl_._cached_size_)*/{}};
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.columnchunkindexentries_){from._impl_.columnchunkindexentries_}
+    , decltype(_impl_.hiddencolumnchunkindexentry_){nullptr}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  if (from._internal_has_hiddencolumnchunkindexentry()) {
+    _this->_impl_.hiddencolumnchunkindexentry_ = new ::pixels::proto::ColumnChunkIndex(*from._impl_.hiddencolumnchunkindexentry_);
+  }
   // @@protoc_insertion_point(copy_constructor:pixels.proto.RowGroupIndex)
 }
 
@@ -6818,8 +7040,10 @@ inline void RowGroupIndex::SharedCtor(
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_.columnchunkindexentries_){arena}
+      decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.columnchunkindexentries_){arena}
+    , decltype(_impl_.hiddencolumnchunkindexentry_){nullptr}
   };
 }
 
@@ -6835,6 +7059,7 @@ RowGroupIndex::~RowGroupIndex() {
 inline void RowGroupIndex::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.columnchunkindexentries_.~RepeatedPtrField();
+  if (this != internal_default_instance()) delete _impl_.hiddencolumnchunkindexentry_;
 }
 
 void RowGroupIndex::SetCachedSize(int size) const {
@@ -6848,11 +7073,18 @@ void RowGroupIndex::Clear() {
   (void) cached_has_bits;
 
   _impl_.columnchunkindexentries_.Clear();
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    GOOGLE_DCHECK(_impl_.hiddencolumnchunkindexentry_ != nullptr);
+    _impl_.hiddencolumnchunkindexentry_->Clear();
+  }
+  _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* RowGroupIndex::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
@@ -6867,6 +7099,14 @@ const char* RowGroupIndex::_InternalParse(const char* ptr, ::_pbi::ParseContext*
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional .pixels.proto.ColumnChunkIndex hiddenColumnChunkIndexEntry = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_hiddencolumnchunkindexentry(), ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -6886,6 +7126,7 @@ const char* RowGroupIndex::_InternalParse(const char* ptr, ::_pbi::ParseContext*
     CHK_(ptr != nullptr);
   }  // while
 message_done:
+  _impl_._has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
@@ -6905,6 +7146,14 @@ uint8_t* RowGroupIndex::_InternalSerialize(
     const auto& repfield = this->_internal_columnchunkindexentries(i);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
         InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  // optional .pixels.proto.ColumnChunkIndex hiddenColumnChunkIndexEntry = 2;
+  if (cached_has_bits & 0x00000001u) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::hiddencolumnchunkindexentry(this),
+        _Internal::hiddencolumnchunkindexentry(this).GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -6930,6 +7179,14 @@ size_t RowGroupIndex::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
+  // optional .pixels.proto.ColumnChunkIndex hiddenColumnChunkIndexEntry = 2;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.hiddencolumnchunkindexentry_);
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -6949,6 +7206,10 @@ void RowGroupIndex::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::
   (void) cached_has_bits;
 
   _this->_impl_.columnchunkindexentries_.MergeFrom(from._impl_.columnchunkindexentries_);
+  if (from._internal_has_hiddencolumnchunkindexentry()) {
+    _this->_internal_mutable_hiddencolumnchunkindexentry()->::pixels::proto::ColumnChunkIndex::MergeFrom(
+        from._internal_hiddencolumnchunkindexentry());
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -6966,7 +7227,9 @@ bool RowGroupIndex::IsInitialized() const {
 void RowGroupIndex::InternalSwap(RowGroupIndex* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   _impl_.columnchunkindexentries_.InternalSwap(&other->_impl_.columnchunkindexentries_);
+  swap(_impl_.hiddencolumnchunkindexentry_, other->_impl_.hiddencolumnchunkindexentry_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RowGroupIndex::GetMetadata() const {
@@ -6979,8 +7242,17 @@ void RowGroupIndex::InternalSwap(RowGroupIndex* other) {
 
 class RowGroupEncoding::_Internal {
  public:
+  using HasBits = decltype(std::declval<RowGroupEncoding>()._impl_._has_bits_);
+  static const ::pixels::proto::ColumnEncoding& hiddencolumnchunkencoding(const RowGroupEncoding* msg);
+  static void set_has_hiddencolumnchunkencoding(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
 };
 
+const ::pixels::proto::ColumnEncoding&
+RowGroupEncoding::_Internal::hiddencolumnchunkencoding(const RowGroupEncoding* msg) {
+  return *msg->_impl_.hiddencolumnchunkencoding_;
+}
 RowGroupEncoding::RowGroupEncoding(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
@@ -6991,10 +7263,15 @@ RowGroupEncoding::RowGroupEncoding(const RowGroupEncoding& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   RowGroupEncoding* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_.columnchunkencodings_){from._impl_.columnchunkencodings_}
-    , /*decltype(_impl_._cached_size_)*/{}};
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.columnchunkencodings_){from._impl_.columnchunkencodings_}
+    , decltype(_impl_.hiddencolumnchunkencoding_){nullptr}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  if (from._internal_has_hiddencolumnchunkencoding()) {
+    _this->_impl_.hiddencolumnchunkencoding_ = new ::pixels::proto::ColumnEncoding(*from._impl_.hiddencolumnchunkencoding_);
+  }
   // @@protoc_insertion_point(copy_constructor:pixels.proto.RowGroupEncoding)
 }
 
@@ -7003,8 +7280,10 @@ inline void RowGroupEncoding::SharedCtor(
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_.columnchunkencodings_){arena}
+      decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.columnchunkencodings_){arena}
+    , decltype(_impl_.hiddencolumnchunkencoding_){nullptr}
   };
 }
 
@@ -7020,6 +7299,7 @@ RowGroupEncoding::~RowGroupEncoding() {
 inline void RowGroupEncoding::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.columnchunkencodings_.~RepeatedPtrField();
+  if (this != internal_default_instance()) delete _impl_.hiddencolumnchunkencoding_;
 }
 
 void RowGroupEncoding::SetCachedSize(int size) const {
@@ -7033,11 +7313,18 @@ void RowGroupEncoding::Clear() {
   (void) cached_has_bits;
 
   _impl_.columnchunkencodings_.Clear();
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    GOOGLE_DCHECK(_impl_.hiddencolumnchunkencoding_ != nullptr);
+    _impl_.hiddencolumnchunkencoding_->Clear();
+  }
+  _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* RowGroupEncoding::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
@@ -7052,6 +7339,14 @@ const char* RowGroupEncoding::_InternalParse(const char* ptr, ::_pbi::ParseConte
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional .pixels.proto.ColumnEncoding hiddenColumnChunkEncoding = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_hiddencolumnchunkencoding(), ptr);
+          CHK_(ptr);
         } else
           goto handle_unusual;
         continue;
@@ -7071,6 +7366,7 @@ const char* RowGroupEncoding::_InternalParse(const char* ptr, ::_pbi::ParseConte
     CHK_(ptr != nullptr);
   }  // while
 message_done:
+  _impl_._has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
@@ -7090,6 +7386,14 @@ uint8_t* RowGroupEncoding::_InternalSerialize(
     const auto& repfield = this->_internal_columnchunkencodings(i);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
         InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  // optional .pixels.proto.ColumnEncoding hiddenColumnChunkEncoding = 2;
+  if (cached_has_bits & 0x00000001u) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::hiddencolumnchunkencoding(this),
+        _Internal::hiddencolumnchunkencoding(this).GetCachedSize(), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -7115,6 +7419,14 @@ size_t RowGroupEncoding::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
+  // optional .pixels.proto.ColumnEncoding hiddenColumnChunkEncoding = 2;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.hiddencolumnchunkencoding_);
+  }
+
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -7134,6 +7446,10 @@ void RowGroupEncoding::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const
   (void) cached_has_bits;
 
   _this->_impl_.columnchunkencodings_.MergeFrom(from._impl_.columnchunkencodings_);
+  if (from._internal_has_hiddencolumnchunkencoding()) {
+    _this->_internal_mutable_hiddencolumnchunkencoding()->::pixels::proto::ColumnEncoding::MergeFrom(
+        from._internal_hiddencolumnchunkencoding());
+  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -7147,13 +7463,18 @@ void RowGroupEncoding::CopyFrom(const RowGroupEncoding& from) {
 bool RowGroupEncoding::IsInitialized() const {
   if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.columnchunkencodings_))
     return false;
+  if (_internal_has_hiddencolumnchunkencoding()) {
+    if (!_impl_.hiddencolumnchunkencoding_->IsInitialized()) return false;
+  }
   return true;
 }
 
 void RowGroupEncoding::InternalSwap(RowGroupEncoding* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   _impl_.columnchunkencodings_.InternalSwap(&other->_impl_.columnchunkencodings_);
+  swap(_impl_.hiddencolumnchunkencoding_, other->_impl_.hiddencolumnchunkencoding_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RowGroupEncoding::GetMetadata() const {

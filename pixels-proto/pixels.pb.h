@@ -591,8 +591,9 @@ class PostScript final :
     kCompressionFieldNumber = 4,
     kCompressionBlockSizeFieldNumber = 5,
     kPixelStrideFieldNumber = 6,
-    kPartitionedFieldNumber = 8,
     kColumnChunkAlignmentFieldNumber = 9,
+    kPartitionedFieldNumber = 8,
+    kHasHiddenColumnFieldNumber = 10,
   };
   // optional string writerTimezone = 7;
   bool has_writertimezone() const;
@@ -708,6 +709,19 @@ class PostScript final :
   void _internal_set_pixelstride(uint32_t value);
   public:
 
+  // optional uint32 columnChunkAlignment = 9;
+  bool has_columnchunkalignment() const;
+  private:
+  bool _internal_has_columnchunkalignment() const;
+  public:
+  void clear_columnchunkalignment();
+  uint32_t columnchunkalignment() const;
+  void set_columnchunkalignment(uint32_t value);
+  private:
+  uint32_t _internal_columnchunkalignment() const;
+  void _internal_set_columnchunkalignment(uint32_t value);
+  public:
+
   // optional bool partitioned = 8;
   bool has_partitioned() const;
   private:
@@ -721,17 +735,17 @@ class PostScript final :
   void _internal_set_partitioned(bool value);
   public:
 
-  // optional uint32 columnChunkAlignment = 9;
-  bool has_columnchunkalignment() const;
+  // optional bool hasHiddenColumn = 10;
+  bool has_hashiddencolumn() const;
   private:
-  bool _internal_has_columnchunkalignment() const;
+  bool _internal_has_hashiddencolumn() const;
   public:
-  void clear_columnchunkalignment();
-  uint32_t columnchunkalignment() const;
-  void set_columnchunkalignment(uint32_t value);
+  void clear_hashiddencolumn();
+  bool hashiddencolumn() const;
+  void set_hashiddencolumn(bool value);
   private:
-  uint32_t _internal_columnchunkalignment() const;
-  void _internal_set_columnchunkalignment(uint32_t value);
+  bool _internal_hashiddencolumn() const;
+  void _internal_set_hashiddencolumn(bool value);
   public:
 
   // @@protoc_insertion_point(class_scope:pixels.proto.PostScript)
@@ -752,8 +766,9 @@ class PostScript final :
     int compression_;
     uint32_t compressionblocksize_;
     uint32_t pixelstride_;
-    bool partitioned_;
     uint32_t columnchunkalignment_;
+    bool partitioned_;
+    bool hashiddencolumn_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_pixels_2eproto;
@@ -892,6 +907,9 @@ class Footer final :
     kColumnStatsFieldNumber = 2,
     kRowGroupInfosFieldNumber = 3,
     kRowGroupStatsFieldNumber = 4,
+    kHiddenRowGroupStatsFieldNumber = 7,
+    kHiddenTypeFieldNumber = 5,
+    kHiddenColumnStatsFieldNumber = 6,
   };
   // repeated .pixels.proto.Type types = 1;
   int types_size() const;
@@ -965,6 +983,60 @@ class Footer final :
   const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::RowGroupStatistic >&
       rowgroupstats() const;
 
+  // repeated .pixels.proto.ColumnStatistic hiddenRowGroupStats = 7;
+  int hiddenrowgroupstats_size() const;
+  private:
+  int _internal_hiddenrowgroupstats_size() const;
+  public:
+  void clear_hiddenrowgroupstats();
+  ::pixels::proto::ColumnStatistic* mutable_hiddenrowgroupstats(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnStatistic >*
+      mutable_hiddenrowgroupstats();
+  private:
+  const ::pixels::proto::ColumnStatistic& _internal_hiddenrowgroupstats(int index) const;
+  ::pixels::proto::ColumnStatistic* _internal_add_hiddenrowgroupstats();
+  public:
+  const ::pixels::proto::ColumnStatistic& hiddenrowgroupstats(int index) const;
+  ::pixels::proto::ColumnStatistic* add_hiddenrowgroupstats();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnStatistic >&
+      hiddenrowgroupstats() const;
+
+  // optional .pixels.proto.Type hiddenType = 5;
+  bool has_hiddentype() const;
+  private:
+  bool _internal_has_hiddentype() const;
+  public:
+  void clear_hiddentype();
+  const ::pixels::proto::Type& hiddentype() const;
+  PROTOBUF_NODISCARD ::pixels::proto::Type* release_hiddentype();
+  ::pixels::proto::Type* mutable_hiddentype();
+  void set_allocated_hiddentype(::pixels::proto::Type* hiddentype);
+  private:
+  const ::pixels::proto::Type& _internal_hiddentype() const;
+  ::pixels::proto::Type* _internal_mutable_hiddentype();
+  public:
+  void unsafe_arena_set_allocated_hiddentype(
+      ::pixels::proto::Type* hiddentype);
+  ::pixels::proto::Type* unsafe_arena_release_hiddentype();
+
+  // optional .pixels.proto.ColumnStatistic hiddenColumnStats = 6;
+  bool has_hiddencolumnstats() const;
+  private:
+  bool _internal_has_hiddencolumnstats() const;
+  public:
+  void clear_hiddencolumnstats();
+  const ::pixels::proto::ColumnStatistic& hiddencolumnstats() const;
+  PROTOBUF_NODISCARD ::pixels::proto::ColumnStatistic* release_hiddencolumnstats();
+  ::pixels::proto::ColumnStatistic* mutable_hiddencolumnstats();
+  void set_allocated_hiddencolumnstats(::pixels::proto::ColumnStatistic* hiddencolumnstats);
+  private:
+  const ::pixels::proto::ColumnStatistic& _internal_hiddencolumnstats() const;
+  ::pixels::proto::ColumnStatistic* _internal_mutable_hiddencolumnstats();
+  public:
+  void unsafe_arena_set_allocated_hiddencolumnstats(
+      ::pixels::proto::ColumnStatistic* hiddencolumnstats);
+  ::pixels::proto::ColumnStatistic* unsafe_arena_release_hiddencolumnstats();
+
   // @@protoc_insertion_point(class_scope:pixels.proto.Footer)
  private:
   class _Internal;
@@ -973,11 +1045,15 @@ class Footer final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::Type > types_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnStatistic > columnstats_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::RowGroupInformation > rowgroupinfos_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::RowGroupStatistic > rowgroupstats_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnStatistic > hiddenrowgroupstats_;
+    ::pixels::proto::Type* hiddentype_;
+    ::pixels::proto::ColumnStatistic* hiddencolumnstats_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_pixels_2eproto;
@@ -4456,6 +4532,7 @@ class RowGroupIndex final :
 
   enum : int {
     kColumnChunkIndexEntriesFieldNumber = 1,
+    kHiddenColumnChunkIndexEntryFieldNumber = 2,
   };
   // repeated .pixels.proto.ColumnChunkIndex columnChunkIndexEntries = 1;
   int columnchunkindexentries_size() const;
@@ -4475,6 +4552,24 @@ class RowGroupIndex final :
   const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnChunkIndex >&
       columnchunkindexentries() const;
 
+  // optional .pixels.proto.ColumnChunkIndex hiddenColumnChunkIndexEntry = 2;
+  bool has_hiddencolumnchunkindexentry() const;
+  private:
+  bool _internal_has_hiddencolumnchunkindexentry() const;
+  public:
+  void clear_hiddencolumnchunkindexentry();
+  const ::pixels::proto::ColumnChunkIndex& hiddencolumnchunkindexentry() const;
+  PROTOBUF_NODISCARD ::pixels::proto::ColumnChunkIndex* release_hiddencolumnchunkindexentry();
+  ::pixels::proto::ColumnChunkIndex* mutable_hiddencolumnchunkindexentry();
+  void set_allocated_hiddencolumnchunkindexentry(::pixels::proto::ColumnChunkIndex* hiddencolumnchunkindexentry);
+  private:
+  const ::pixels::proto::ColumnChunkIndex& _internal_hiddencolumnchunkindexentry() const;
+  ::pixels::proto::ColumnChunkIndex* _internal_mutable_hiddencolumnchunkindexentry();
+  public:
+  void unsafe_arena_set_allocated_hiddencolumnchunkindexentry(
+      ::pixels::proto::ColumnChunkIndex* hiddencolumnchunkindexentry);
+  ::pixels::proto::ColumnChunkIndex* unsafe_arena_release_hiddencolumnchunkindexentry();
+
   // @@protoc_insertion_point(class_scope:pixels.proto.RowGroupIndex)
  private:
   class _Internal;
@@ -4483,8 +4578,10 @@ class RowGroupIndex final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnChunkIndex > columnchunkindexentries_;
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnChunkIndex > columnchunkindexentries_;
+    ::pixels::proto::ColumnChunkIndex* hiddencolumnchunkindexentry_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_pixels_2eproto;
@@ -4620,6 +4717,7 @@ class RowGroupEncoding final :
 
   enum : int {
     kColumnChunkEncodingsFieldNumber = 1,
+    kHiddenColumnChunkEncodingFieldNumber = 2,
   };
   // repeated .pixels.proto.ColumnEncoding columnChunkEncodings = 1;
   int columnchunkencodings_size() const;
@@ -4639,6 +4737,24 @@ class RowGroupEncoding final :
   const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnEncoding >&
       columnchunkencodings() const;
 
+  // optional .pixels.proto.ColumnEncoding hiddenColumnChunkEncoding = 2;
+  bool has_hiddencolumnchunkencoding() const;
+  private:
+  bool _internal_has_hiddencolumnchunkencoding() const;
+  public:
+  void clear_hiddencolumnchunkencoding();
+  const ::pixels::proto::ColumnEncoding& hiddencolumnchunkencoding() const;
+  PROTOBUF_NODISCARD ::pixels::proto::ColumnEncoding* release_hiddencolumnchunkencoding();
+  ::pixels::proto::ColumnEncoding* mutable_hiddencolumnchunkencoding();
+  void set_allocated_hiddencolumnchunkencoding(::pixels::proto::ColumnEncoding* hiddencolumnchunkencoding);
+  private:
+  const ::pixels::proto::ColumnEncoding& _internal_hiddencolumnchunkencoding() const;
+  ::pixels::proto::ColumnEncoding* _internal_mutable_hiddencolumnchunkencoding();
+  public:
+  void unsafe_arena_set_allocated_hiddencolumnchunkencoding(
+      ::pixels::proto::ColumnEncoding* hiddencolumnchunkencoding);
+  ::pixels::proto::ColumnEncoding* unsafe_arena_release_hiddencolumnchunkencoding();
+
   // @@protoc_insertion_point(class_scope:pixels.proto.RowGroupEncoding)
  private:
   class _Internal;
@@ -4647,8 +4763,10 @@ class RowGroupEncoding final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnEncoding > columnchunkencodings_;
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnEncoding > columnchunkencodings_;
+    ::pixels::proto::ColumnEncoding* hiddencolumnchunkencoding_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_pixels_2eproto;
@@ -5555,7 +5673,7 @@ inline void PostScript::set_allocated_writertimezone(std::string* writertimezone
 
 // optional bool partitioned = 8;
 inline bool PostScript::_internal_has_partitioned() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000100u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000200u) != 0;
   return value;
 }
 inline bool PostScript::has_partitioned() const {
@@ -5563,7 +5681,7 @@ inline bool PostScript::has_partitioned() const {
 }
 inline void PostScript::clear_partitioned() {
   _impl_.partitioned_ = false;
-  _impl_._has_bits_[0] &= ~0x00000100u;
+  _impl_._has_bits_[0] &= ~0x00000200u;
 }
 inline bool PostScript::_internal_partitioned() const {
   return _impl_.partitioned_;
@@ -5573,7 +5691,7 @@ inline bool PostScript::partitioned() const {
   return _internal_partitioned();
 }
 inline void PostScript::_internal_set_partitioned(bool value) {
-  _impl_._has_bits_[0] |= 0x00000100u;
+  _impl_._has_bits_[0] |= 0x00000200u;
   _impl_.partitioned_ = value;
 }
 inline void PostScript::set_partitioned(bool value) {
@@ -5583,7 +5701,7 @@ inline void PostScript::set_partitioned(bool value) {
 
 // optional uint32 columnChunkAlignment = 9;
 inline bool PostScript::_internal_has_columnchunkalignment() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000200u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000100u) != 0;
   return value;
 }
 inline bool PostScript::has_columnchunkalignment() const {
@@ -5591,7 +5709,7 @@ inline bool PostScript::has_columnchunkalignment() const {
 }
 inline void PostScript::clear_columnchunkalignment() {
   _impl_.columnchunkalignment_ = 0u;
-  _impl_._has_bits_[0] &= ~0x00000200u;
+  _impl_._has_bits_[0] &= ~0x00000100u;
 }
 inline uint32_t PostScript::_internal_columnchunkalignment() const {
   return _impl_.columnchunkalignment_;
@@ -5601,12 +5719,40 @@ inline uint32_t PostScript::columnchunkalignment() const {
   return _internal_columnchunkalignment();
 }
 inline void PostScript::_internal_set_columnchunkalignment(uint32_t value) {
-  _impl_._has_bits_[0] |= 0x00000200u;
+  _impl_._has_bits_[0] |= 0x00000100u;
   _impl_.columnchunkalignment_ = value;
 }
 inline void PostScript::set_columnchunkalignment(uint32_t value) {
   _internal_set_columnchunkalignment(value);
   // @@protoc_insertion_point(field_set:pixels.proto.PostScript.columnChunkAlignment)
+}
+
+// optional bool hasHiddenColumn = 10;
+inline bool PostScript::_internal_has_hashiddencolumn() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000400u) != 0;
+  return value;
+}
+inline bool PostScript::has_hashiddencolumn() const {
+  return _internal_has_hashiddencolumn();
+}
+inline void PostScript::clear_hashiddencolumn() {
+  _impl_.hashiddencolumn_ = false;
+  _impl_._has_bits_[0] &= ~0x00000400u;
+}
+inline bool PostScript::_internal_hashiddencolumn() const {
+  return _impl_.hashiddencolumn_;
+}
+inline bool PostScript::hashiddencolumn() const {
+  // @@protoc_insertion_point(field_get:pixels.proto.PostScript.hasHiddenColumn)
+  return _internal_hashiddencolumn();
+}
+inline void PostScript::_internal_set_hashiddencolumn(bool value) {
+  _impl_._has_bits_[0] |= 0x00000400u;
+  _impl_.hashiddencolumn_ = value;
+}
+inline void PostScript::set_hashiddencolumn(bool value) {
+  _internal_set_hashiddencolumn(value);
+  // @@protoc_insertion_point(field_set:pixels.proto.PostScript.hasHiddenColumn)
 }
 
 // optional string magic = 8000;
@@ -5839,6 +5985,226 @@ inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::RowGrou
 Footer::rowgroupstats() const {
   // @@protoc_insertion_point(field_list:pixels.proto.Footer.rowGroupStats)
   return _impl_.rowgroupstats_;
+}
+
+// optional .pixels.proto.Type hiddenType = 5;
+inline bool Footer::_internal_has_hiddentype() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.hiddentype_ != nullptr);
+  return value;
+}
+inline bool Footer::has_hiddentype() const {
+  return _internal_has_hiddentype();
+}
+inline void Footer::clear_hiddentype() {
+  if (_impl_.hiddentype_ != nullptr) _impl_.hiddentype_->Clear();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const ::pixels::proto::Type& Footer::_internal_hiddentype() const {
+  const ::pixels::proto::Type* p = _impl_.hiddentype_;
+  return p != nullptr ? *p : reinterpret_cast<const ::pixels::proto::Type&>(
+      ::pixels::proto::_Type_default_instance_);
+}
+inline const ::pixels::proto::Type& Footer::hiddentype() const {
+  // @@protoc_insertion_point(field_get:pixels.proto.Footer.hiddenType)
+  return _internal_hiddentype();
+}
+inline void Footer::unsafe_arena_set_allocated_hiddentype(
+    ::pixels::proto::Type* hiddentype) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.hiddentype_);
+  }
+  _impl_.hiddentype_ = hiddentype;
+  if (hiddentype) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:pixels.proto.Footer.hiddenType)
+}
+inline ::pixels::proto::Type* Footer::release_hiddentype() {
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::pixels::proto::Type* temp = _impl_.hiddentype_;
+  _impl_.hiddentype_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::pixels::proto::Type* Footer::unsafe_arena_release_hiddentype() {
+  // @@protoc_insertion_point(field_release:pixels.proto.Footer.hiddenType)
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::pixels::proto::Type* temp = _impl_.hiddentype_;
+  _impl_.hiddentype_ = nullptr;
+  return temp;
+}
+inline ::pixels::proto::Type* Footer::_internal_mutable_hiddentype() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  if (_impl_.hiddentype_ == nullptr) {
+    auto* p = CreateMaybeMessage<::pixels::proto::Type>(GetArenaForAllocation());
+    _impl_.hiddentype_ = p;
+  }
+  return _impl_.hiddentype_;
+}
+inline ::pixels::proto::Type* Footer::mutable_hiddentype() {
+  ::pixels::proto::Type* _msg = _internal_mutable_hiddentype();
+  // @@protoc_insertion_point(field_mutable:pixels.proto.Footer.hiddenType)
+  return _msg;
+}
+inline void Footer::set_allocated_hiddentype(::pixels::proto::Type* hiddentype) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.hiddentype_;
+  }
+  if (hiddentype) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(hiddentype);
+    if (message_arena != submessage_arena) {
+      hiddentype = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, hiddentype, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.hiddentype_ = hiddentype;
+  // @@protoc_insertion_point(field_set_allocated:pixels.proto.Footer.hiddenType)
+}
+
+// optional .pixels.proto.ColumnStatistic hiddenColumnStats = 6;
+inline bool Footer::_internal_has_hiddencolumnstats() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.hiddencolumnstats_ != nullptr);
+  return value;
+}
+inline bool Footer::has_hiddencolumnstats() const {
+  return _internal_has_hiddencolumnstats();
+}
+inline void Footer::clear_hiddencolumnstats() {
+  if (_impl_.hiddencolumnstats_ != nullptr) _impl_.hiddencolumnstats_->Clear();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const ::pixels::proto::ColumnStatistic& Footer::_internal_hiddencolumnstats() const {
+  const ::pixels::proto::ColumnStatistic* p = _impl_.hiddencolumnstats_;
+  return p != nullptr ? *p : reinterpret_cast<const ::pixels::proto::ColumnStatistic&>(
+      ::pixels::proto::_ColumnStatistic_default_instance_);
+}
+inline const ::pixels::proto::ColumnStatistic& Footer::hiddencolumnstats() const {
+  // @@protoc_insertion_point(field_get:pixels.proto.Footer.hiddenColumnStats)
+  return _internal_hiddencolumnstats();
+}
+inline void Footer::unsafe_arena_set_allocated_hiddencolumnstats(
+    ::pixels::proto::ColumnStatistic* hiddencolumnstats) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.hiddencolumnstats_);
+  }
+  _impl_.hiddencolumnstats_ = hiddencolumnstats;
+  if (hiddencolumnstats) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:pixels.proto.Footer.hiddenColumnStats)
+}
+inline ::pixels::proto::ColumnStatistic* Footer::release_hiddencolumnstats() {
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  ::pixels::proto::ColumnStatistic* temp = _impl_.hiddencolumnstats_;
+  _impl_.hiddencolumnstats_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::pixels::proto::ColumnStatistic* Footer::unsafe_arena_release_hiddencolumnstats() {
+  // @@protoc_insertion_point(field_release:pixels.proto.Footer.hiddenColumnStats)
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  ::pixels::proto::ColumnStatistic* temp = _impl_.hiddencolumnstats_;
+  _impl_.hiddencolumnstats_ = nullptr;
+  return temp;
+}
+inline ::pixels::proto::ColumnStatistic* Footer::_internal_mutable_hiddencolumnstats() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  if (_impl_.hiddencolumnstats_ == nullptr) {
+    auto* p = CreateMaybeMessage<::pixels::proto::ColumnStatistic>(GetArenaForAllocation());
+    _impl_.hiddencolumnstats_ = p;
+  }
+  return _impl_.hiddencolumnstats_;
+}
+inline ::pixels::proto::ColumnStatistic* Footer::mutable_hiddencolumnstats() {
+  ::pixels::proto::ColumnStatistic* _msg = _internal_mutable_hiddencolumnstats();
+  // @@protoc_insertion_point(field_mutable:pixels.proto.Footer.hiddenColumnStats)
+  return _msg;
+}
+inline void Footer::set_allocated_hiddencolumnstats(::pixels::proto::ColumnStatistic* hiddencolumnstats) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.hiddencolumnstats_;
+  }
+  if (hiddencolumnstats) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(hiddencolumnstats);
+    if (message_arena != submessage_arena) {
+      hiddencolumnstats = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, hiddencolumnstats, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.hiddencolumnstats_ = hiddencolumnstats;
+  // @@protoc_insertion_point(field_set_allocated:pixels.proto.Footer.hiddenColumnStats)
+}
+
+// repeated .pixels.proto.ColumnStatistic hiddenRowGroupStats = 7;
+inline int Footer::_internal_hiddenrowgroupstats_size() const {
+  return _impl_.hiddenrowgroupstats_.size();
+}
+inline int Footer::hiddenrowgroupstats_size() const {
+  return _internal_hiddenrowgroupstats_size();
+}
+inline void Footer::clear_hiddenrowgroupstats() {
+  _impl_.hiddenrowgroupstats_.Clear();
+}
+inline ::pixels::proto::ColumnStatistic* Footer::mutable_hiddenrowgroupstats(int index) {
+  // @@protoc_insertion_point(field_mutable:pixels.proto.Footer.hiddenRowGroupStats)
+  return _impl_.hiddenrowgroupstats_.Mutable(index);
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnStatistic >*
+Footer::mutable_hiddenrowgroupstats() {
+  // @@protoc_insertion_point(field_mutable_list:pixels.proto.Footer.hiddenRowGroupStats)
+  return &_impl_.hiddenrowgroupstats_;
+}
+inline const ::pixels::proto::ColumnStatistic& Footer::_internal_hiddenrowgroupstats(int index) const {
+  return _impl_.hiddenrowgroupstats_.Get(index);
+}
+inline const ::pixels::proto::ColumnStatistic& Footer::hiddenrowgroupstats(int index) const {
+  // @@protoc_insertion_point(field_get:pixels.proto.Footer.hiddenRowGroupStats)
+  return _internal_hiddenrowgroupstats(index);
+}
+inline ::pixels::proto::ColumnStatistic* Footer::_internal_add_hiddenrowgroupstats() {
+  return _impl_.hiddenrowgroupstats_.Add();
+}
+inline ::pixels::proto::ColumnStatistic* Footer::add_hiddenrowgroupstats() {
+  ::pixels::proto::ColumnStatistic* _add = _internal_add_hiddenrowgroupstats();
+  // @@protoc_insertion_point(field_add:pixels.proto.Footer.hiddenRowGroupStats)
+  return _add;
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnStatistic >&
+Footer::hiddenrowgroupstats() const {
+  // @@protoc_insertion_point(field_list:pixels.proto.Footer.hiddenRowGroupStats)
+  return _impl_.hiddenrowgroupstats_;
 }
 
 // -------------------------------------------------------------------
@@ -8420,6 +8786,96 @@ RowGroupIndex::columnchunkindexentries() const {
   return _impl_.columnchunkindexentries_;
 }
 
+// optional .pixels.proto.ColumnChunkIndex hiddenColumnChunkIndexEntry = 2;
+inline bool RowGroupIndex::_internal_has_hiddencolumnchunkindexentry() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.hiddencolumnchunkindexentry_ != nullptr);
+  return value;
+}
+inline bool RowGroupIndex::has_hiddencolumnchunkindexentry() const {
+  return _internal_has_hiddencolumnchunkindexentry();
+}
+inline void RowGroupIndex::clear_hiddencolumnchunkindexentry() {
+  if (_impl_.hiddencolumnchunkindexentry_ != nullptr) _impl_.hiddencolumnchunkindexentry_->Clear();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const ::pixels::proto::ColumnChunkIndex& RowGroupIndex::_internal_hiddencolumnchunkindexentry() const {
+  const ::pixels::proto::ColumnChunkIndex* p = _impl_.hiddencolumnchunkindexentry_;
+  return p != nullptr ? *p : reinterpret_cast<const ::pixels::proto::ColumnChunkIndex&>(
+      ::pixels::proto::_ColumnChunkIndex_default_instance_);
+}
+inline const ::pixels::proto::ColumnChunkIndex& RowGroupIndex::hiddencolumnchunkindexentry() const {
+  // @@protoc_insertion_point(field_get:pixels.proto.RowGroupIndex.hiddenColumnChunkIndexEntry)
+  return _internal_hiddencolumnchunkindexentry();
+}
+inline void RowGroupIndex::unsafe_arena_set_allocated_hiddencolumnchunkindexentry(
+    ::pixels::proto::ColumnChunkIndex* hiddencolumnchunkindexentry) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.hiddencolumnchunkindexentry_);
+  }
+  _impl_.hiddencolumnchunkindexentry_ = hiddencolumnchunkindexentry;
+  if (hiddencolumnchunkindexentry) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:pixels.proto.RowGroupIndex.hiddenColumnChunkIndexEntry)
+}
+inline ::pixels::proto::ColumnChunkIndex* RowGroupIndex::release_hiddencolumnchunkindexentry() {
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::pixels::proto::ColumnChunkIndex* temp = _impl_.hiddencolumnchunkindexentry_;
+  _impl_.hiddencolumnchunkindexentry_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::pixels::proto::ColumnChunkIndex* RowGroupIndex::unsafe_arena_release_hiddencolumnchunkindexentry() {
+  // @@protoc_insertion_point(field_release:pixels.proto.RowGroupIndex.hiddenColumnChunkIndexEntry)
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::pixels::proto::ColumnChunkIndex* temp = _impl_.hiddencolumnchunkindexentry_;
+  _impl_.hiddencolumnchunkindexentry_ = nullptr;
+  return temp;
+}
+inline ::pixels::proto::ColumnChunkIndex* RowGroupIndex::_internal_mutable_hiddencolumnchunkindexentry() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  if (_impl_.hiddencolumnchunkindexentry_ == nullptr) {
+    auto* p = CreateMaybeMessage<::pixels::proto::ColumnChunkIndex>(GetArenaForAllocation());
+    _impl_.hiddencolumnchunkindexentry_ = p;
+  }
+  return _impl_.hiddencolumnchunkindexentry_;
+}
+inline ::pixels::proto::ColumnChunkIndex* RowGroupIndex::mutable_hiddencolumnchunkindexentry() {
+  ::pixels::proto::ColumnChunkIndex* _msg = _internal_mutable_hiddencolumnchunkindexentry();
+  // @@protoc_insertion_point(field_mutable:pixels.proto.RowGroupIndex.hiddenColumnChunkIndexEntry)
+  return _msg;
+}
+inline void RowGroupIndex::set_allocated_hiddencolumnchunkindexentry(::pixels::proto::ColumnChunkIndex* hiddencolumnchunkindexentry) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.hiddencolumnchunkindexentry_;
+  }
+  if (hiddencolumnchunkindexentry) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(hiddencolumnchunkindexentry);
+    if (message_arena != submessage_arena) {
+      hiddencolumnchunkindexentry = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, hiddencolumnchunkindexentry, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.hiddencolumnchunkindexentry_ = hiddencolumnchunkindexentry;
+  // @@protoc_insertion_point(field_set_allocated:pixels.proto.RowGroupIndex.hiddenColumnChunkIndexEntry)
+}
+
 // -------------------------------------------------------------------
 
 // RowGroupEncoding
@@ -8462,6 +8918,96 @@ inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::pixels::proto::ColumnE
 RowGroupEncoding::columnchunkencodings() const {
   // @@protoc_insertion_point(field_list:pixels.proto.RowGroupEncoding.columnChunkEncodings)
   return _impl_.columnchunkencodings_;
+}
+
+// optional .pixels.proto.ColumnEncoding hiddenColumnChunkEncoding = 2;
+inline bool RowGroupEncoding::_internal_has_hiddencolumnchunkencoding() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.hiddencolumnchunkencoding_ != nullptr);
+  return value;
+}
+inline bool RowGroupEncoding::has_hiddencolumnchunkencoding() const {
+  return _internal_has_hiddencolumnchunkencoding();
+}
+inline void RowGroupEncoding::clear_hiddencolumnchunkencoding() {
+  if (_impl_.hiddencolumnchunkencoding_ != nullptr) _impl_.hiddencolumnchunkencoding_->Clear();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const ::pixels::proto::ColumnEncoding& RowGroupEncoding::_internal_hiddencolumnchunkencoding() const {
+  const ::pixels::proto::ColumnEncoding* p = _impl_.hiddencolumnchunkencoding_;
+  return p != nullptr ? *p : reinterpret_cast<const ::pixels::proto::ColumnEncoding&>(
+      ::pixels::proto::_ColumnEncoding_default_instance_);
+}
+inline const ::pixels::proto::ColumnEncoding& RowGroupEncoding::hiddencolumnchunkencoding() const {
+  // @@protoc_insertion_point(field_get:pixels.proto.RowGroupEncoding.hiddenColumnChunkEncoding)
+  return _internal_hiddencolumnchunkencoding();
+}
+inline void RowGroupEncoding::unsafe_arena_set_allocated_hiddencolumnchunkencoding(
+    ::pixels::proto::ColumnEncoding* hiddencolumnchunkencoding) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.hiddencolumnchunkencoding_);
+  }
+  _impl_.hiddencolumnchunkencoding_ = hiddencolumnchunkencoding;
+  if (hiddencolumnchunkencoding) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:pixels.proto.RowGroupEncoding.hiddenColumnChunkEncoding)
+}
+inline ::pixels::proto::ColumnEncoding* RowGroupEncoding::release_hiddencolumnchunkencoding() {
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::pixels::proto::ColumnEncoding* temp = _impl_.hiddencolumnchunkencoding_;
+  _impl_.hiddencolumnchunkencoding_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::pixels::proto::ColumnEncoding* RowGroupEncoding::unsafe_arena_release_hiddencolumnchunkencoding() {
+  // @@protoc_insertion_point(field_release:pixels.proto.RowGroupEncoding.hiddenColumnChunkEncoding)
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::pixels::proto::ColumnEncoding* temp = _impl_.hiddencolumnchunkencoding_;
+  _impl_.hiddencolumnchunkencoding_ = nullptr;
+  return temp;
+}
+inline ::pixels::proto::ColumnEncoding* RowGroupEncoding::_internal_mutable_hiddencolumnchunkencoding() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  if (_impl_.hiddencolumnchunkencoding_ == nullptr) {
+    auto* p = CreateMaybeMessage<::pixels::proto::ColumnEncoding>(GetArenaForAllocation());
+    _impl_.hiddencolumnchunkencoding_ = p;
+  }
+  return _impl_.hiddencolumnchunkencoding_;
+}
+inline ::pixels::proto::ColumnEncoding* RowGroupEncoding::mutable_hiddencolumnchunkencoding() {
+  ::pixels::proto::ColumnEncoding* _msg = _internal_mutable_hiddencolumnchunkencoding();
+  // @@protoc_insertion_point(field_mutable:pixels.proto.RowGroupEncoding.hiddenColumnChunkEncoding)
+  return _msg;
+}
+inline void RowGroupEncoding::set_allocated_hiddencolumnchunkencoding(::pixels::proto::ColumnEncoding* hiddencolumnchunkencoding) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.hiddencolumnchunkencoding_;
+  }
+  if (hiddencolumnchunkencoding) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(hiddencolumnchunkencoding);
+    if (message_arena != submessage_arena) {
+      hiddencolumnchunkencoding = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, hiddencolumnchunkencoding, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.hiddencolumnchunkencoding_ = hiddencolumnchunkencoding;
+  // @@protoc_insertion_point(field_set_allocated:pixels.proto.RowGroupEncoding.hiddenColumnChunkEncoding)
 }
 
 // -------------------------------------------------------------------
