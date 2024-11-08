@@ -274,7 +274,6 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
 				}
 				char *numeric_str = (char *)palloc0(PIXELS_FDW_MAX_DEC_WIDTH + 2);
 				// lose precision
-				sprintf(numeric_str, "%lf", *((long*)(decimalCol->current())) / decimalCol->getScale());
 				Datum numeric_data = DirectFunctionCall3(numeric_in,
 													 	 CStringGetDatum(numeric_str),
 													 	 ObjectIdGetDatum(InvalidOid),
