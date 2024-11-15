@@ -12,7 +12,7 @@ DirectIoLib::DirectIoLib(int fsBlockSize) {
 std::shared_ptr<ByteBuffer> DirectIoLib::allocateDirectBuffer(long size) {
 	int toAllocate = blockEnd(size) + (size == 1? 0: fsBlockSize);
 	uint8_t * directBufferPointer;
-	posix_memalign((void **)&directBufferPointer, fsBlockSize, toAllocate);
+	int newPointer = posix_memalign((void **)&directBufferPointer, fsBlockSize, toAllocate);
 	auto directBuffer = std::make_shared<ByteBuffer>(directBufferPointer, toAllocate, false);
 	return directBuffer;
 }

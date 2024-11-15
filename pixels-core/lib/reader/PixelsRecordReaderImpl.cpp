@@ -16,7 +16,14 @@ PixelsRecordReaderImpl::PixelsRecordReaderImpl(std::shared_ptr<PhysicalReader> r
     postScript = pixelsPostScript;
     footerCache = pixelsFooterCache;
     option = opt;
-    // TODO: intialize all kinds of variables
+    enabledFilterPushDown = option.isEnabledFilterPushDown();
+    if (enabledFilterPushDown) {
+        filters = option.getFilters();
+    }
+    else {
+        filters = std::vector<PixelsFilter*>();
+    }
+    filterMask = nullptr;
     queryId = option.getQueryId();
     RGStart = option.getRGStart();
     RGLen = option.getRGLen();
@@ -109,6 +116,10 @@ void PixelsRecordReaderImpl::checkBeforeRead() {
 void PixelsRecordReaderImpl::UpdateRowGroupInfo() {
 	// if not end of file, update row count
 	curRGRowCount = (int) footer.rowgroupinfos(targetRGs.at(curRGIdx)).numberofrows();
+    if(enabledFilterPushDown) {
+        int length = std::min(batchSize, curRGRowCount);
+        filterMask = std::make_shared<PixelsBitMask>(length);
+    }
 	curRGFooter = rowGroupFooters.at(curRGIdx);
 	// refresh resultColumnsEncoded for reading the column vectors in the next row group.
 	const pixels::proto::RowGroupEncoding& rgEncoding = rowGroupFooters.at(curRGIdx)->rowgroupencoding();
@@ -162,7 +173,33 @@ std::shared_ptr<VectorizedRowBatch> PixelsRecordReaderImpl::readBatch(bool reuse
     }
 
     auto columnVectors = resultRowBatch->cols;
+    if(filterMask != nullptr) {
+        filterMask->set();
+    }
     std::vector<int> filterColumnIndex;
+    if(!filters.empty()) {
+        for (auto &filterCol : filters) {
+            if(filterMask->isNone()) {
+                break;
+            }
+            std::string col_name = filterCol->getColumnName();
+            auto colNames = fileSchema->getFieldNames();
+            int colINdex = std::find(colNames.begin(), colNames.end(), col_name) - colNames.begin();
+            if (colINdex < 0 || colINdex > colNames.size()) {
+                continue;
+            }
+            int i = std::find(resultColumns.begin(), resultColumns.end(), colINdex) - resultColumns.begin();;
+            int index = curChunkBufferIndex.at(i);
+            auto & encoding = curEncoding.at(i);
+            auto & chunkIndex = curChunkIndex.at(i);
+            readers.at(i)->read(chunkBuffers.at(index), *encoding, curRowInRG, curBatchSize,
+                                postScript.pixelstride(), resultRowBatch->rowCount,
+                                columnVectors.at(i), *chunkIndex);
+            filterColumnIndex.emplace_back(index);
+            filterCol->ApplyFilter(columnVectors.at(i), *filterMask,
+                                      resultSchema->getChildren().at(i));
+        }
+    }
 
     // read vectors
     for(int i = 0; i < resultColumns.size(); i++) {

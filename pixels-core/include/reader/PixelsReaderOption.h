@@ -8,12 +8,15 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "PixelsFilter.hpp"
 
 class PixelsReaderOption {
 public:
     PixelsReaderOption();
     void setIncludeCols(const std::vector<std::string> & columnNames);
     std::vector<std::string> getIncludedCols();
+    void setFilters(const std::vector<PixelsFilter*> & filters);
+    std::vector<PixelsFilter*> getFilters();
     void setSkipCorruptRecords(bool s);
     bool isSkipCorruptRecords();
     void setQueryId(long qId);
@@ -31,6 +34,7 @@ public:
     bool isEnableEncodedColumnVector();
 private:
     std::vector<std::string> includedCols;
+    std::vector<PixelsFilter*> col_filters;
     bool skipCorruptRecords;
     bool tolerantSchemaEvolution;     // this may lead to column missing due to schema evolution
     bool enableEncodedColumnVector;   // whether read encoded column vectors directly when possible

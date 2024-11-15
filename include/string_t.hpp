@@ -14,6 +14,19 @@
 #include <cassert>
 #include <string>
 
+
+template <typename T>
+const T Load(void *ptr) {
+	T ret;
+	memcpy(&ret, ptr, sizeof(ret)); // NOLINT
+	return ret;
+}
+
+template <typename T>
+void Store(const T &val, void *ptr) {
+	memcpy(ptr, (void *)&val, sizeof(val)); // NOLINT
+}
+
 struct string_t {
 
 public:
@@ -96,13 +109,82 @@ public:
 			memset(value.inlined.inlined + GetSize(), 0, INLINE_BYTES - GetSize());
 		} else {
 			// copy the data into the prefix
-#ifndef DUCKDB_DEBUG_NO_INLINE
-			auto dataptr = GetData();
-			memcpy(value.pointer.prefix, dataptr, PREFIX_LENGTH);
-#else
 			memset(value.pointer.prefix, 0, PREFIX_BYTES);
-#endif
 		}
+	}
+
+	struct StringComparisonOperators {
+		static inline bool Equals(const string_t &a, const string_t &b) {
+			uint64_t a_bulk_comp = Load<uint64_t>((void*)&a);
+			uint64_t b_bulk_comp = Load<uint64_t>((void*)&b);
+			if (a_bulk_comp != b_bulk_comp) {
+				// Either length or prefix are different -> not equal
+				return false;
+			}
+			// they have the same length and same prefix!
+			a_bulk_comp = Load<uint64_t>((void*)(&a) + 8u);
+			b_bulk_comp = Load<uint64_t>((void*)(&b) + 8u);
+			if (a_bulk_comp == b_bulk_comp) {
+				// either they are both inlined (so compare equal) or point to the same string (so compare equal)
+				return true;
+			}
+			if (!a.IsInlined()) {
+				// 'long' strings of the same length -> compare pointed value
+				if (memcmp(a.value.pointer.ptr, b.value.pointer.ptr, a.GetSize()) == 0) {
+					return true;
+				}
+			}
+			// either they are short string of same length but different content
+			//     or they point to string with different content
+			//     either way, they can't represent the same underlying string
+			return false;
+		}
+		// compare up to shared length. if still the same, compare lengths
+		static bool GreaterThan(const string_t &left, const string_t &right) {
+			const uint32_t left_length = static_cast<uint32_t>(left.GetSize());
+			const uint32_t right_length = static_cast<uint32_t>(right.GetSize());
+			const uint32_t min_length = std::min<uint32_t>(left_length, right_length);
+
+#ifndef DUCKDB_DEBUG_NO_INLINE
+			uint32_t a_prefix = Load<uint32_t>((void*)(left.GetPrefix()));
+			uint32_t b_prefix = Load<uint32_t>((void*)(right.GetPrefix()));
+
+			// Utility to move 0xa1b2c3d4 into 0xd4c3b2a1, basically inverting the order byte-a-byte
+			auto byte_swap = [](uint32_t v) -> uint32_t {
+				uint32_t t1 = (v >> 16u) | (v << 16u);
+				uint32_t t2 = t1 & 0x00ff00ff;
+				uint32_t t3 = t1 & 0xff00ff00;
+				return (t2 << 8u) | (t3 >> 8u);
+			};
+
+			// Check on prefix -----
+			// We dont' need to mask since:
+			//	if the prefix is greater(after bswap), it will stay greater regardless of the extra bytes
+			// 	if the prefix is smaller(after bswap), it will stay smaller regardless of the extra bytes
+			//	if the prefix is equal, the extra bytes are guaranteed to be /0 for the shorter one
+
+			if (a_prefix != b_prefix) {
+				return byte_swap(a_prefix) > byte_swap(b_prefix);
+			}
+#endif
+			auto memcmp_res = memcmp(left.GetData(), right.GetData(), min_length);
+			return memcmp_res > 0 || (memcmp_res == 0 && left_length > right_length);
+		}
+	};
+
+	bool operator==(const string_t &r) const {
+		return StringComparisonOperators::Equals(*this, r);
+	}
+
+	bool operator!=(const string_t &r) const {
+		return !(*this == r);
+	}
+
+	bool operator>(const string_t &r) const {
+		return StringComparisonOperators::GreaterThan(*this, r);
+	}
+	bool operator<(const string_t &r) const {
+		return r > *this;
 	}
 private:
 	union {

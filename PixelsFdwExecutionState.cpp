@@ -3,19 +3,63 @@
 //
 
 #include "PixelsFdwExecutionState.hpp"
-#include "physical/StorageArrayScheduler.h"
-#include "profiler/CountProfiler.h"
 
-PixelsFdwExecutionState::PixelsFdwExecutionState(string filename,
+char *
+tolowercase(const char *input, char *output)
+{
+    int i = 0;
+    Assert(strlen(input) < NAMEDATALEN - 1);
+    do
+    {
+        output[i] = tolower(input[i]);
+    }
+    while (input[i++]);
+
+    return output;
+}
+
+
+
+PixelsFdwExecutionState::PixelsFdwExecutionState(List* files,
+												 List* filters,
+											     set<int> attrs_used,
 												 TupleDesc tupleDesc) {
-	vector<Oid> return_types;
-	for (int i = 0; i < tupleDesc->natts; i++) {
-		return_types.push_back(TupleDescAttr(tupleDesc, i)->atttypid);
+	ListCell *file_lc;
+	foreach (file_lc, files) {
+		files_list.emplace_back(std::string(strVal(lfirst(file_lc))));
 	}
-	vector<uint64_t> column;
-	bind_data = PixelsFdwExecutionState::PixelsScanBind(filename, return_types);
+	ListCell *filter_lc;
+	foreach (filter_lc, filters) {
+		filters_list.emplace_back((PixelsFilter*)lfirst(filter_lc));
+	}
+	attrs_used = attrs_used;
+	tuple_desc = tupleDesc;
+	shared_ptr<TypeDescription> file_schema;
+	bind_data = PixelsFdwExecutionState::PixelsScanBind(files_list, filters_list, file_schema);
+	column_map = PixelsFdwExecutionState::PixelsGetColumnMap(file_schema, attrs_used, tuple_desc);
 	parallel_state = PixelsFdwExecutionState::PixelsScanInitGlobal(*bind_data);
-	scan_data = PixelsFdwExecutionState::PixelsScanInitLocal(*bind_data, *parallel_state);
+	scan_data = PixelsFdwExecutionState::PixelsScanInitLocal(*bind_data, *parallel_state, column_map);
+}
+
+PixelsFdwExecutionState::~PixelsFdwExecutionState() {
+	if (bind_data->initialPixelsReader) {
+		bind_data->initialPixelsReader->close();
+	}
+	bind_data.reset();
+	if (parallel_state->initialPixelsReader) {
+		parallel_state->initialPixelsReader->close();
+	}
+	parallel_state.reset();
+	if (scan_data->currReader) {
+		scan_data->currReader->close();
+	}
+	if (scan_data->currPixelsRecordReader) {
+		scan_data->currPixelsRecordReader->close();
+	}
+	if (scan_data->nextPixelsRecordReader) {
+		scan_data->nextPixelsRecordReader->close();
+	}
+	scan_data.reset();
 }
 
 
@@ -42,47 +86,11 @@ static uint32_t PixelsCardinality(const PixelsReadBindData *bind_data) {
 	return data.initialPixelsReader->getNumberOfRows() * data.files.size();
 }
 
-void
-PixelsFdwExecutionState::TransformPostgresType(const std::shared_ptr<TypeDescription>& type,
-                      						   vector<Oid> &return_types)
-{
-    auto columnSchemas = type->getChildren();
-	for(auto columnType: columnSchemas) {
-		switch (columnType->getCategory()) {
-			case TypeDescription::SHORT:
-				return_types.emplace_back(INT2OID);
-			    break;
-			case TypeDescription::INT:
-				return_types.emplace_back(INT4OID);
-			    break;
-			case TypeDescription::LONG:
-				return_types.emplace_back(INT8OID);
-			    break;
-			case TypeDescription::DECIMAL:
-			    return_types.emplace_back(NUMERICOID);
-				break;
-			case TypeDescription::DATE:
-			    return_types.emplace_back(DATEOID);
-				break;
-            case TypeDescription::TIMESTAMP:
-                return_types.emplace_back(TIMESTAMPOID);
-                break;
-			case TypeDescription::VARCHAR:
-				return_types.emplace_back(VARCHAROID);
-				break;
-			case TypeDescription::CHAR:
-				return_types.emplace_back(CHAROID);
-				break;
-			default:
-				throw InvalidArgumentException("bad column type in TransformDuckdbType: " + std::to_string(type->getCategory()));
-		}
-	}
-}
-
 unique_ptr<PixelsReadBindData>
-PixelsFdwExecutionState::PixelsScanBind(string filename,
-                           				vector<Oid> &return_types) {
-	if (filename.empty()) {
+PixelsFdwExecutionState::PixelsScanBind(vector<string> filenames,
+										vector<PixelsFilter*> filters_list,
+                           				shared_ptr<TypeDescription> &file_schema) {
+	if (filenames.empty()) {
 		throw PixelsReaderException("Pixels reader cannot take empty filename as parameter");
 	}
 
@@ -90,21 +98,58 @@ PixelsFdwExecutionState::PixelsScanBind(string filename,
 	auto builder = std::make_shared<PixelsReaderBuilder>();
 
 	std::shared_ptr<::Storage> storage = StorageFactory::getInstance()->getStorage(::Storage::file);
-	std::shared_ptr<PixelsReader> pixelsReader = builder->setPath(filename)
+	std::shared_ptr<PixelsReader> pixelsReader = builder->setPath(filenames.at(0))
 	                                 					->setStorage(storage)
 	                                 					->setPixelsFooterCache(footerCache)
 	                                 					->build();
-	std::shared_ptr<TypeDescription> fileSchema = pixelsReader->getFileSchema();
-	TransformPostgresType(fileSchema, return_types);
+	file_schema = pixelsReader->getFileSchema();
 
 	auto result = make_unique<PixelsReadBindData>();
 	result->initialPixelsReader = pixelsReader;
-	result->fileSchema = fileSchema;
-	vector<string> filenames;
-	filenames.emplace_back(filename);
+	result->fileSchema = file_schema;
 	result->files = filenames;
+	result->filters = filters_list;
 
 	return std::move(result);
+}
+
+vector<int>
+PixelsFdwExecutionState::PixelsGetColumnMap(const shared_ptr<TypeDescription> file_schema,
+										    set<int> attrs_used,
+											TupleDesc tupleDesc) {
+	vector<int> column_map;
+	column_map.resize(tupleDesc->natts);
+    for (int i = 0; i < tupleDesc->natts; i++)
+    {
+        AttrNumber  attnum = i + 1 - FirstLowInvalidHeapAttributeNumber;
+        char        pg_colname[255];
+        const char *attname = NameStr(TupleDescAttr(tupleDesc, i)->attname);
+
+        column_map[i] = -1;
+
+        /* Skip columns we don't intend to use in query */
+        if (attrs_used.find(attnum) == attrs_used.end())
+            continue;
+
+        tolowercase(NameStr(TupleDescAttr(tupleDesc, i)->attname), pg_colname);
+		assert(file_schema->getCategory() == TypeDescription::STRUCT);
+		vector<char*> column_names;
+        for (int i = 0; i < file_schema->getChildren().size(); i++)
+        {
+            auto field_name = file_schema->getFieldNames().at(i);
+            char pixels_colname[255];
+            if (field_name.length() > NAMEDATALEN)
+                throw PixelsReaderException("pixels column name is too long");
+            tolowercase(file_schema->getFieldNames().at(i).c_str(), pixels_colname);
+            if (strcmp(pg_colname, pixels_colname) == 0)
+            {
+                column_names.push_back(pixels_colname);
+                column_map[i] = column_names.size() - 1;
+                break;
+            }
+        }
+    }
+	return column_map;
 }
 
 unique_ptr<PixelsReadGlobalState>
@@ -125,11 +170,22 @@ PixelsFdwExecutionState::PixelsScanInitGlobal(PixelsReadBindData &bind_data) {
 
 unique_ptr<PixelsReadLocalState>
 PixelsFdwExecutionState::PixelsScanInitLocal(PixelsReadBindData &bind_data,
-											 PixelsReadGlobalState &parallel_state) {
+											 PixelsReadGlobalState &parallel_state,
+											 vector<int> column_map) {
 	auto result = make_unique<PixelsReadLocalState>();
     result->deviceID = parallel_state.storageArrayScheduler->acquireDeviceId();
-	auto field_names = bind_data.fileSchema->getFieldNames();
+	auto file_schema = bind_data.fileSchema;
+	vector<string> field_names;
+	vector<uint64_t> field_ids;
+	for (int i = 0; i < column_map.size(); i++) {
+		if (column_map[i] >= 0) {
+			field_names.emplace_back(file_schema->getFieldNames().at(i));
+			field_ids.emplace_back(i);
+		}
+	}
+	result->filters = bind_data.filters;
 	result->column_names = field_names;
+	result->column_ids = field_ids;
 	if(!PixelsParallelStateNext(bind_data, *result, parallel_state, true)) {
 		return nullptr;
 	}
@@ -205,6 +261,8 @@ PixelsFdwExecutionState::GetPixelsReaderOption(PixelsReadLocalState &local_state
     option.setIncludeCols(local_state.column_names);
 	option.setRGRange(0, local_state.nextReader->getRowGroupNum());
     option.setQueryId(1);
+	option.setEnabledFilterPushDown(true);
+	option.setFilters(local_state.filters);
     int stride = std::stoi(ConfigFactory::Instance().getProperty("pixel.stride"));
     option.setBatchSize(stride);
     return option;
@@ -231,39 +289,39 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
     }
 	if (scan_data->vectorizedRowBatch == nullptr) {
         scan_data->vectorizedRowBatch = currPixelsRecordReader->readBatch(false);
-		current_location = 0;
+		cur_row_index = 0;
     }
-    if (current_location >= scan_data->vectorizedRowBatch->rowCount) {
+    if (cur_row_index >= scan_data->vectorizedRowBatch->rowCount) {
 		scan_data->vectorizedRowBatch = currPixelsRecordReader->readBatch(false);
-		current_location = 0;
+		cur_row_index = 0;
 	}
-    std::shared_ptr<TypeDescription> resultSchema = scan_data->currPixelsRecordReader->getResultSchema();
-    for (int attr = 0; attr < slot->tts_tupleDescriptor->natts; attr++) {
-		auto col = scan_data->vectorizedRowBatch->cols.at(attr);
-		auto colSchema = bind_data->fileSchema->getChildren().at(attr);
+	for (int i = 0; i < scan_data->column_ids.size(); i++) {
+		int column_id = scan_data->column_ids.at(i);
+		auto col = scan_data->vectorizedRowBatch->cols.at(i);
+		auto colSchema = bind_data->fileSchema->getChildren().at(column_id);
 		switch (colSchema->getCategory()) {
 			case TypeDescription::SHORT: {
 			    auto intCol = std::static_pointer_cast<LongColumnVector>(col);
-                slot->tts_isnull[attr] = false;
-				slot->tts_values[attr] = Int16GetDatum(*((short*)(intCol->current())));
+                slot->tts_isnull[column_id] = false;
+				slot->tts_values[column_id] = Int16GetDatum(*((short*)(intCol->current())));
 			    break;
 			}
 			case TypeDescription::INT: {
 				auto intCol = std::static_pointer_cast<LongColumnVector>(col);
-                slot->tts_isnull[attr] = false;
-				slot->tts_values[attr] = Int32GetDatum(*((int*)(intCol->current())));
+                slot->tts_isnull[column_id] = false;
+				slot->tts_values[column_id] = Int32GetDatum(*((int*)(intCol->current())));
 			    break;
 		    }
 			case TypeDescription::LONG: {
 				auto intCol = std::static_pointer_cast<LongColumnVector>(col);
-                slot->tts_isnull[attr] = false;
-				slot->tts_values[attr] = Int64GetDatum(*((long*)(intCol->current())));
+                slot->tts_isnull[column_id] = false;
+				slot->tts_values[column_id] = Int64GetDatum(*((long*)(intCol->current())));
 			    break;
 			}
 			case TypeDescription::DATE: {
 				auto intCol = std::static_pointer_cast<DateColumnVector>(col);
-                slot->tts_isnull[attr] = false;
-				slot->tts_values[attr] = DateADTGetDatum(*((int*)(intCol->current())) + (UNIX_EPOCH_JDATE - POSTGRES_EPOCH_JDATE));
+                slot->tts_isnull[column_id] = false;
+				slot->tts_values[column_id] = DateADTGetDatum(*((int*)(intCol->current())) + (UNIX_EPOCH_JDATE - POSTGRES_EPOCH_JDATE));
 			    break;
 		    }
 			case TypeDescription::DECIMAL: {
@@ -273,9 +331,9 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
 				}
 				// lose precision
 				Datum numeric_data = DirectFunctionCall1(float8_numeric,
-													 	 float8(*((long*)(decimalCol->current())) / std::pow(10, decimalCol->getScale())));
-                slot->tts_isnull[attr] = false;
-				slot->tts_values[attr] = numeric_data;
+													 	 Float8GetDatum(float8(*((long*)(decimalCol->current())) / std::pow(10, decimalCol->getScale()))));
+                slot->tts_isnull[column_id] = false;
+				slot->tts_values[column_id] = numeric_data;
 			    break;
 		    }
 			case TypeDescription::VARCHAR:
@@ -287,8 +345,8 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
             	bytea *b = (bytea*)palloc0(bytea_len);
             	SET_VARSIZE(b, bytea_len);
             	memcpy(VARDATA(b), string_value->GetData(), string_value->GetSize());
-                slot->tts_isnull[attr] = false;
-				slot->tts_values[attr] = PointerGetDatum(b);
+                slot->tts_isnull[column_id] = false;
+				slot->tts_values[column_id] = PointerGetDatum(b);
 			    break;
 		    }
             default: {
@@ -297,21 +355,34 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
 			}	
 		}       
     }
-    current_location++;
+    cur_row_index++;
 	scan_data->vectorizedRowBatch->increment(1);
 	ExecStoreVirtualTuple(slot);
     return true;
 }
 
-void PixelsFdwExecutionState::PixelsFdwExecutionState::rescan() {
-	bind_data->curFileId = 0;
-	scan_data->curr_batch_index = 0;
-	scan_data->curr_file_name = bind_data->files.front();
-	scan_data->currPixelsRecordReader = nullptr;
+void
+PixelsFdwExecutionState::PixelsFdwExecutionState::rescan() {
+	bind_data->initialPixelsReader->close();
+	bind_data.reset();
+	parallel_state->initialPixelsReader->close();
+	parallel_state.reset();
+	scan_data->currReader->close();
+	scan_data->currPixelsRecordReader->close();
+	scan_data->nextPixelsRecordReader->close();
+	scan_data.reset();
+	shared_ptr<TypeDescription> file_schema;
+	bind_data = PixelsFdwExecutionState::PixelsScanBind(files_list, filters_list, file_schema);
+	column_map = PixelsFdwExecutionState::PixelsGetColumnMap(file_schema, attrs_used, tuple_desc);
+	parallel_state = PixelsFdwExecutionState::PixelsScanInitGlobal(*bind_data);
+	scan_data = PixelsFdwExecutionState::PixelsScanInitLocal(*bind_data, *parallel_state, column_map);
+
 }
 
 PixelsFdwExecutionState*
-createPixelsFdwExecutionState(string filename,
+createPixelsFdwExecutionState(List* filenames,
+							  List* filters,
+							  set<int> attrs_used,
 							  TupleDesc tupleDesc) {
-    return new PixelsFdwExecutionState(filename, tupleDesc);
+    return new PixelsFdwExecutionState(filenames, filters, attrs_used, tupleDesc);
 }

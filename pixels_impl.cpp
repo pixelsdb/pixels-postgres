@@ -40,7 +40,7 @@ extern "C"
 #include "nodes/pathnodes.h"
 }
 
-#define MAX_PIXELS_OPTION_LENGTH 100
+#define MAX_PIXELS_OPTION_LENGTH 500
 
 static void*
 pixelsGetOption(Oid relid, char* option_name)
@@ -105,6 +105,478 @@ pixelsGetOptions(Oid relid)
 	return options;
 }
 
+typedef enum
+{
+    FPS_START = 0,
+    FPS_IDENT,
+    FPS_QUOTE
+} FileParserState;
+
+static void
+parse_filenames_list(const char *str, List* &filenames)
+{
+    char       					*cur = pstrdup(str);
+    char       					*f = cur;
+    FileParserState 			state = FPS_START;
+    while (*cur)
+    {
+        switch (state)
+        {
+            case FPS_START:
+                switch (*cur)
+                {
+                    case ' ':
+                        /* just skip */
+                        break;
+                    case '|':
+                        f = cur + 1;
+                        state = FPS_QUOTE;
+                        break;
+                    default:
+                        /* XXX we should check that *cur is a valid path symbol
+                         * but let's skip it for now */
+                        state = FPS_IDENT;
+                        f = cur;
+                        break;
+                }
+                break;
+            case FPS_IDENT:
+                switch (*cur)
+                {
+                    case ' ':
+                        *cur = '\0';
+                        filenames = lappend(filenames, makeString(f));
+                        state = FPS_START;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case FPS_QUOTE:
+                switch (*cur)
+                {
+                    case '|':
+                        *cur = '\0';
+                        filenames = lappend(filenames, makeString(f));
+                        state = FPS_START;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            default:
+                elog(ERROR, "pixels_fdw: unknown filename parse state");
+        }
+        cur++;
+    }
+}
+
+typedef enum
+{
+    FT_DIGIT = 0,
+    FT_DECIMAL,
+    FT_AND,
+    FT_OR,
+    FT_GTEQ,
+    FT_LTEQ,
+    FT_EQ,
+    FT_GT,
+    FT_LT,
+    FT_LB,
+    FT_RB,
+    FT_WORD,
+    FT_MISMATCH
+} FilterType;
+
+
+static void
+parse_filter_type(const char *str,
+                  PixelsFilter* &all_filters,
+                  List* &refered_cols)
+{
+    std::string s = std::string(str);
+    assert(!s.empty());
+    std::regex delim("\\s+");
+    std::regex_token_iterator<std::string::iterator> split(s.begin(), s.end(), delim, -1);
+    std::regex_token_iterator<std::string::iterator> rend;
+    
+    std::vector<regex> regexs;
+    regexs.emplace_back(std::regex("\\d+"));
+    regexs.emplace_back(std::regex("\\d*\\.\\d*"));
+    regexs.emplace_back(std::regex("&"));
+    regexs.emplace_back(std::regex("\\|"));
+    regexs.emplace_back(std::regex(">="));
+    regexs.emplace_back(std::regex("<="));
+    regexs.emplace_back(std::regex("=="));
+    regexs.emplace_back(std::regex(">"));
+    regexs.emplace_back(std::regex("<"));
+    regexs.emplace_back(std::regex("\\("));
+    regexs.emplace_back(std::regex("\\)"));
+    regexs.emplace_back(std::regex("\\w+"));
+
+    std::vector<FilterType> ops;
+    std::vector<std::string> oprands;
+    
+    while (split != rend) {
+        std::string sub = *split++;
+        FilterType t = FT_DIGIT;
+        for (; t < FT_MISMATCH; t = (FilterType)(t + 1)) {
+            if (std::regex_match(sub, regexs.at(t))) {
+                break;
+            }
+        }
+        if (t == FT_MISMATCH) {
+            ereport(ERROR,
+                (errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                 errmsg("pixels_fdw: invalid filter option \"%s\"",
+                        sub.c_str())));
+        }
+        ops.emplace_back(t);
+        oprands.emplace_back(sub);
+    }
+
+    ops.emplace_back(FT_MISMATCH);  // Invalid
+
+    std::stack<FilterType> ops_stack;
+    std::stack<std::pair<std::string, bool>> oprands_stack;
+
+    int ipriority[] = {-1, -1, 4, 2, 6, 6, 6, 6, 6, 0, 7, -1, -1};
+    int opriority[] = {-1, -1, 3, 1, 5, 5, 5, 5, 5, 7, 0, -1, -1};
+
+    std::stack<PixelsFilter*> filters;
+
+    ops_stack.push(FT_MISMATCH); // Invalid
+    for (int i = 0; i < ops.size(); ) {
+        if (ops.at(i) == FT_DIGIT || ops.at(i) == FT_DECIMAL) {
+            oprands_stack.push(std::make_pair(oprands.front(), true));
+            oprands.erase(oprands.begin());
+            i++;
+        }
+        else if (ops.at(i) == FT_WORD) {
+            oprands_stack.push(std::make_pair(oprands.front(), false));
+            oprands.erase(oprands.begin());
+            i++;
+            refered_cols = lappend(refered_cols, makeString((char*)oprands.front().c_str()));
+        }
+        else {
+            if (opriority[ops.at(i)] > ipriority[ops_stack.top()]) {
+                ops_stack.push(ops.at(i));
+                i++;
+            }
+            else if (opriority[ops.at(i)] < ipriority[ops_stack.top()]) {
+                switch (ops_stack.top()) {
+                    case FT_AND: {
+                        PixelsFilter *and_filter = createPixelsFilter(PixelsFilterType::CONJUNCTION_AND, std::string(), 0, 0, string_t());
+                        if (filters.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        PixelsFilter *filter_2 = filters.top();
+                        filters.pop();
+                        PixelsFilter *filter_1 = filters.top();
+                        filters.pop();
+                        and_filter->setLChild(filter_1);
+                        and_filter->setLChild(filter_2);
+                        filters.push(and_filter);
+                        break;
+                    }
+                    case FT_OR: {
+                        PixelsFilter *or_filter = createPixelsFilter(PixelsFilterType::CONJUNCTION_OR, std::string(), 0, 0, string_t());
+                        if (filters.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        PixelsFilter *filter_2 = filters.top();
+                        filters.pop();
+                        PixelsFilter *filter_1 = filters.top();
+                        filters.pop();
+                        or_filter->setLChild(filter_1);
+                        or_filter->setLChild(filter_2);
+                        filters.push(or_filter);
+                        break;
+                    }
+                    case FT_GTEQ: {
+                        if (oprands_stack.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
+                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
+                        oprands_stack.pop();
+                        if (oprand_1.second == oprand_2.second) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        if (!oprand_1.second) {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_2.first.c_str());
+                            char *cname = (char*)palloc0(oprand_1.first.size());
+                            strcpy(cname, oprand_1.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_GTEQ, oprand_1.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        else {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_1.first.c_str());
+                            char *cname = (char*)palloc0(oprand_2.first.size());
+                            strcpy(cname, oprand_2.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_LTEQ, oprand_2.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        break;
+                    }
+                    case FT_LTEQ: {
+                        if (oprands_stack.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
+                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
+                        oprands_stack.pop();
+                        if (oprand_1.second == oprand_2.second) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        if (!oprand_1.second) {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_2.first.c_str());
+                            char *cname = (char*)palloc0(oprand_1.first.size());
+                            strcpy(cname, oprand_1.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_LTEQ, oprand_1.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        else {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_1.first.c_str());
+                            char *cname = (char*)palloc0(oprand_2.first.size());
+                            strcpy(cname, oprand_2.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_GTEQ, oprand_2.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        break;
+                    }
+                    case FT_EQ: {
+                        if (oprands_stack.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
+                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
+                        oprands_stack.pop();
+                        if (oprand_1.second == oprand_2.second) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        if (!oprand_1.second) {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_2.first.c_str());
+                            char *cname = (char*)palloc0(oprand_1.first.size());
+                            strcpy(cname, oprand_1.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_LTEQ, oprand_1.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        else {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_1.first.c_str());
+                            char *cname = (char*)palloc0(oprand_2.first.size());
+                            strcpy(cname, oprand_2.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_GTEQ, oprand_2.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        break;
+                    }
+                    case FT_GT: {
+                        if (oprands_stack.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
+                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
+                        oprands_stack.pop();
+                        if (oprand_1.second == oprand_2.second) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        if (!oprand_1.second) {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_2.first.c_str());
+                            char *cname = (char*)palloc0(oprand_1.first.size());
+                            strcpy(cname, oprand_1.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_GT, oprand_1.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        else {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_1.first.c_str());
+                            char *cname = (char*)palloc0(oprand_2.first.size());
+                            strcpy(cname, oprand_2.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_LT, oprand_2.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        break;
+                    }
+                    case FT_LT: {
+                        if (oprands_stack.size() < 2) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
+                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
+                        oprands_stack.pop();
+                        if (oprand_1.second == oprand_2.second) {
+                            ereport(ERROR,
+                                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                                errmsg("pixels_fdw: invalid filter option, parse error "));
+                        }
+                        if (!oprand_1.second) {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_2.first.c_str());
+                            char *cname = (char*)palloc0(oprand_1.first.size());
+                            strcpy(cname, oprand_1.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_LT, oprand_1.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        else {
+                            long ivalue;
+                            double dvalue;
+                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            string_t svalue = string_t(oprand_1.first.c_str());
+                            char *cname = (char*)palloc0(oprand_2.first.size());
+                            strcpy(cname, oprand_2.first.c_str());
+
+                            PixelsFilter *gteq_filter = createPixelsFilter(PixelsFilterType::COMPARE_GT, oprand_2.first, ivalue, dvalue, svalue);
+                            filters.push(gteq_filter);
+                        }
+                        break;
+                    }
+                    default: {
+                        ereport(ERROR,
+                            errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                            errmsg("pixels_fdw: invalid filter option, parse error "));
+                    }                     
+                }
+                ops_stack.pop();
+            }
+            else {
+                ops_stack.pop();
+                i++;
+            }
+        }
+    }
+    if (oprands_stack.size() != 0 || filters.size() != 1) {
+        ereport(ERROR,
+                errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+                errmsg("pixels_fdw: invalid filter option, parse error"));
+    }
+    all_filters = filters.top();
+}
+
+static void
+search_and_merge(const char *col_name, PixelsFilter *root, PixelsFilter *&new_filter) {
+    if (!root->getColumnName().empty()) {
+        if ((root->getColumnName().compare(std::string(col_name)) == 0)) {
+            new_filter = root->copy();
+            return;
+        }
+        return;
+    }
+    else {
+        assert(root->getFilterType() == PixelsFilterType::CONJUNCTION_AND || root->getFilterType() == PixelsFilterType::CONJUNCTION_OR);
+        assert(root->getLChild());
+        assert(root->getRChild());
+        PixelsFilter *new_lchild = nullptr;
+        search_and_merge(col_name, root->getLChild(), new_lchild);
+        PixelsFilter *new_rchild = nullptr;
+        search_and_merge(col_name, root->getLChild(), new_rchild);
+        if (!new_lchild && !new_rchild) {
+            return;
+        }
+        else if (new_lchild && !new_rchild) {
+            new_filter = new_lchild;
+            return;
+        }
+        else if (!new_lchild && new_rchild) {
+            new_filter = new_rchild;
+            return;
+        }
+        else {
+            new_filter = root->copy();
+            new_filter->setColumnName(std::string(col_name));
+            new_filter->setLChild(new_lchild);
+            new_filter->setRChild(new_rchild);
+            return;
+        }
+    }
+}
+
+static void
+separate_filters(PixelsFilter* &all_filters,
+                 List* &refered_cols, 
+                 List* &col_filters) {
+    ListCell *lc;
+	foreach (lc, refered_cols) {
+		char *col_name = strVal(lfirst(lc));
+        PixelsFilter* col_filter = nullptr;
+        search_and_merge(col_name, all_filters, col_filter);
+        if(col_filter) {
+            col_filters = lappend(col_filters, col_filter);
+        }
+	}
+}
+
 extern "C" void
 pixelsGetForeignRelSize(PlannerInfo *root,
                         RelOptInfo *baserel,
@@ -113,10 +585,19 @@ pixelsGetForeignRelSize(PlannerInfo *root,
     PixelsFdwPlanState *fdw_private;
     char* filename = (char*)pixelsGetOption(foreigntableid,
                      						"filename");
-	List* options = pixelsGetOptions(foreigntableid);
-	fdw_private = createPixelsFdwPlanState(filename,
+	List* filenames = NIL;
+	parse_filenames_list(filename, filenames);
+    char* filters = (char*)pixelsGetOption(foreigntableid,
+                     					   "filters");
+    PixelsFilter* all_filters;
+	List* refered_cols = NIL;
+	parse_filter_type(filters, all_filters, refered_cols);
+    List* col_filters = NIL;
+    separate_filters(all_filters, refered_cols, col_filters);
+    List* options = pixelsGetOptions(foreigntableid);
+	fdw_private = createPixelsFdwPlanState(filenames,
+                                           col_filters,
 										   options);
-
     baserel->fdw_private = fdw_private;
     baserel->tuples = fdw_private->getRowCount();
 	baserel->rows = fdw_private->getRowCount();
@@ -152,6 +633,32 @@ estimate_costs(PlannerInfo *root,
     baserel->rows = ntuples;
 }
 
+static void
+extract_used_attributes(RelOptInfo *baserel)
+{
+    PixelsFdwPlanState *fdw_private = (PixelsFdwPlanState *) baserel->fdw_private;
+    ListCell *lc;
+
+    pull_varattnos((Node *) baserel->reltarget->exprs,
+                   baserel->relid,
+                   &fdw_private->attrs_used);
+
+    foreach(lc, baserel->baserestrictinfo)
+    {
+        RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+
+        pull_varattnos((Node *) rinfo->clause,
+                       baserel->relid,
+                       &fdw_private->attrs_used);
+    }
+
+    if (bms_is_empty(fdw_private->attrs_used))
+    {
+        bms_free(fdw_private->attrs_used);
+        fdw_private->attrs_used = bms_make_singleton(1 - FirstLowInvalidHeapAttributeNumber);
+    }
+}
+
 extern "C" void
 pixelsGetForeignPaths(PlannerInfo *root,
 					  RelOptInfo *baserel,
@@ -168,6 +675,8 @@ pixelsGetForeignPaths(PlannerInfo *root,
                    &startup_cost,
 				   &run_cost,
                    &total_cost);
+    
+    extract_used_attributes(baserel);
 
 	add_path(baserel, 
              (Path *)
@@ -193,6 +702,10 @@ pixelsGetForeignPlan(PlannerInfo *root,
 				     List *scan_clauses,
 				     Plan *outer_plan)
 {
+	PixelsFdwPlanState *fdw_private = (PixelsFdwPlanState *) baserel->fdw_private;
+	List       *params = NIL;
+    List       *attrs_used = NIL;
+	AttrNumber  attr;
 	Index		scan_relid = baserel->relid;
 
 	/*
@@ -204,13 +717,21 @@ pixelsGetForeignPlan(PlannerInfo *root,
 	 */
 	scan_clauses = extract_actual_clauses(scan_clauses,
                                           false);
+							
+	attr = -1;
+    while ((attr = bms_next_member(fdw_private->attrs_used, attr)) >= 0)
+        attrs_used = lappend_int(attrs_used, attr);
+
+	params = lappend(params, fdw_private->getFilesList());
+	params = lappend(params, fdw_private->getFiltersList());
+    params = lappend(params, attrs_used);
 
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
 							scan_clauses,
 							scan_relid,
 							NIL,	/* no expressions to evaluate */
-							best_path->fdw_private,
+							params,
 							NIL,	/* no custom tlist */
 							NIL,	/* no remote quals */
 							outer_plan);
@@ -219,30 +740,56 @@ pixelsGetForeignPlan(PlannerInfo *root,
 extern "C" void
 pixelsExplainForeignScan(ForeignScanState *node, ExplainState *es)
 {
-    PixelsFdwPlanState *fdw_private;
-    char* filename = (char*)pixelsGetOption(RelationGetRelid(node->ss.ss_currentRelation),
+	char* filename = (char*)pixelsGetOption(RelationGetRelid(node->ss.ss_currentRelation),
                      						"filename");
-	List* options = pixelsGetOptions(RelationGetRelid(node->ss.ss_currentRelation));
-	fdw_private = createPixelsFdwPlanState(filename, options);
-	ExplainPropertyText("Pixels File Name: ",
+	ExplainPropertyText("Pixels File Names: ",
 						 filename,
+                         es);
+	char* filters = (char*)pixelsGetOption(RelationGetRelid(node->ss.ss_currentRelation),
+                     						"filters");
+	ExplainPropertyText("Pixels Table Filters: ",
+						 filters,
                          es);
 }
 
 extern "C" void
 pixelsBeginForeignScan(ForeignScanState *node, int eflags)
 {
-	char* filename = (char*)pixelsGetOption(RelationGetRelid(node->ss.ss_currentRelation),
-                     						"filename");
-
+	List      		*fdw_private = ((ForeignScan *)(node->ss.ps.plan))->fdw_private;
+	ListCell		*lc, *lc2;
+	List        	*filenames = NIL;
+	List        	*filters = NIL;
+	List            *attrs_list;
+    std::set<int>   attrs_used;
+	int             i = 0;
+	foreach (lc, fdw_private)
+    {
+        switch(i)
+        {
+            case 0:
+                filenames = (List *) lfirst(lc);
+                break;
+            case 1:
+                filters = (List *) lfirst(lc);
+                break;
+            case 2:
+                attrs_list = (List *) lfirst(lc);
+                foreach (lc2, attrs_list)
+                    attrs_used.insert(lfirst_int(lc2));
+                break;
+        }
+        ++i;
+    }
 	PixelsFdwExecutionState *festate;
 	/*
 	 * Do nothing in EXPLAIN (no ANALYZE) case.  node->fdw_state stays NULL.
 	 */
 	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
 		return;
-
-	festate = createPixelsFdwExecutionState(filename, node->ss.ss_ScanTupleSlot->tts_tupleDescriptor);
+	festate = createPixelsFdwExecutionState(filenames,
+                                            filters,
+                                            attrs_used,
+                                            node->ss.ss_ScanTupleSlot->tts_tupleDescriptor);
 	node->fdw_state = (void *) festate;
 }
 
@@ -259,7 +806,6 @@ pixelsIterateForeignScan(ForeignScanState *node)
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	ExecClearTuple(slot);
 	if (festate->next(slot)) {
-		
 		return slot;
 	}
 	return NULL;
@@ -275,13 +821,14 @@ pixelsReScanForeignScan(ForeignScanState *node)
 extern "C" void
 pixelsEndForeignScan(ForeignScanState *node)
 {
-    // TODO
+    PixelsFdwExecutionState *festate = (PixelsFdwExecutionState *) node->fdw_state;
+	delete festate;
 }
 
 extern "C" bool
 pixelsAnalyzeForeignTable(Relation relation,
-						AcquireSampleRowsFunc *func,
-						BlockNumber *totalpages) {
+						  AcquireSampleRowsFunc *func,
+						  BlockNumber *totalpages) {
 	return false;
 }
 
@@ -297,6 +844,7 @@ pixels_fdw_validator_impl(PG_FUNCTION_ARGS) {
     Oid         catalog = PG_GETARG_OID(1);
     ListCell   *opt_lc;
     bool        filename_provided = false;
+    bool        filters_provided = false;
 
     /* Only check table options */
     if (catalog != ForeignTableRelationId)
@@ -311,6 +859,13 @@ pixels_fdw_validator_impl(PG_FUNCTION_ARGS) {
             char   *filename = pstrdup(defGetString(def));
             if (filename) {
 				filename_provided = true;
+			}
+        }
+        else if (strcmp(def->defname, "filters") == 0)
+        {
+            char   *filters = pstrdup(defGetString(def));
+            if (filters) {
+				filters_provided = true;
 			}
         }
         else

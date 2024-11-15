@@ -3,7 +3,6 @@
 //
 
 #include "reader/PixelsReaderOption.h"
-
 PixelsReaderOption::PixelsReaderOption() {
     // TODO: pixelsPredicate
     skipCorruptRecords = false;
@@ -24,7 +23,15 @@ std::vector<std::string> PixelsReaderOption::getIncludedCols() {
     return includedCols;
 }
 
-void PixelsReaderOption::setSkipCorruptRecords(bool s) {
+void PixelsReaderOption::setFilters(const std::vector<PixelsFilter *> &filters) {
+    col_filters = filters;
+}
+
+std::vector<PixelsFilter *> PixelsReaderOption::getFilters() {
+    return col_filters;
+}
+void PixelsReaderOption::setSkipCorruptRecords(bool s)
+{
     skipCorruptRecords = s;
 }
 

@@ -6,38 +6,51 @@
 #include "physical/StorageArrayScheduler.h"
 #include "profiler/CountProfiler.h"
 
-PixelsFdwPlanState::PixelsFdwPlanState(string filename,
+PixelsFdwPlanState::PixelsFdwPlanState(List* files,
+									   List* col_filters,
 									   List* options) {
-    
-	rel_data = PixelsFdwPlanState::PixelsBindMetaData(filename);
-    row_count = rel_data->initialPixelsReader->getNumberOfRows();
-    plan_options = options;
-}
-
-unique_ptr<PixelsRelMetaData>
-PixelsFdwPlanState::PixelsBindMetaData(string filename) {
-	if (filename.empty()) {
+	ListCell *file_lc;
+	foreach (file_lc, files) {
+		files_list = lappend(files_list, lfirst(file_lc));
+	}
+	if (list_length(files_list) == 0) {
 		throw PixelsReaderException("Pixels reader cannot take empty filename as parameter");
+	}
+
+	ListCell *filter_lc;
+	foreach (filter_lc, col_filters) {
+		filters_list = lappend(filters_list, lfirst(filter_lc));
 	}
 
 	auto footerCache = std::make_shared<PixelsFooterCache>();
 	auto builder = std::make_shared<PixelsReaderBuilder>();
 
 	std::shared_ptr<::Storage> storage = StorageFactory::getInstance()->getStorage(::Storage::file);
-	std::shared_ptr<PixelsReader> pixelsReader = builder
-	                                 ->setPath(filename)
-	                                 ->setStorage(storage)
-	                                 ->setPixelsFooterCache(footerCache)
-	                                 ->build();
-	std::shared_ptr<TypeDescription> fileSchema = pixelsReader->getFileSchema();
+	std::shared_ptr<PixelsReader> pixelsReader = builder->setPath(string(strVal(lfirst(list_head(files_list)))))
+	                                 					->setStorage(storage)
+	                                 					->setPixelsFooterCache(footerCache)
+	                                 					->build();
+	initialPixelsReader = pixelsReader;
+    row_count = initialPixelsReader->getNumberOfRows();
+    plan_options = options;
+	attrs_used = bms_make_singleton(1 - FirstLowInvalidHeapAttributeNumber);
+}
 
-	auto result = make_unique<PixelsRelMetaData>();
-	result->initialPixelsReader = pixelsReader;
-	vector<string> filenames;
-	filenames.emplace_back(filename);
-	result->files = filenames;
+PixelsFdwPlanState::~PixelsFdwPlanState() {
+	if (initialPixelsReader) {
+		initialPixelsReader->close();
+	}
+	initialPixelsReader.reset();
+}
 
-	return std::move(result);
+List*&
+PixelsFdwPlanState::getFilesList() {
+    return files_list;
+}
+
+List*&
+PixelsFdwPlanState::getFiltersList() {
+    return filters_list;
 }
 
 uint64_t
@@ -45,8 +58,10 @@ PixelsFdwPlanState::getRowCount() {
     return row_count;
 }
 
+
 PixelsFdwPlanState*
-createPixelsFdwPlanState(string filename,
-							   List* options) {
-    return new PixelsFdwPlanState(filename, options);
+createPixelsFdwPlanState(List* files,
+						 List* col_filters,
+						 List* options) {
+    return new PixelsFdwPlanState(files, col_filters, options);
 }

@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 #include <cstdio>
-#include "PixelsRelMetaData.hpp"
 
 #include "physical/storage/LocalFS.h"
 #include "physical/natives/ByteBuffer.h"
@@ -20,6 +19,7 @@
 #include "physical/StorageFactory.h"
 #include "PixelsReaderImpl.h"
 #include "PixelsReaderBuilder.h"
+#include "PixelsFilter.hpp"
 #include <iostream>
 #include <future>
 #include <thread>
@@ -49,16 +49,24 @@ using namespace std;
 
 class PixelsFdwPlanState {
 public:
-	PixelsFdwPlanState(string filename, 
+	PixelsFdwPlanState(List* files,
+                       List* filters,
                        List* options);
-	static unique_ptr<PixelsRelMetaData> PixelsBindMetaData(string filename);
+    ~PixelsFdwPlanState();
+	List*& getFilesList();
+    List*& getFiltersList();
     uint64_t getRowCount();
+    Bitmapset* attrs_used;
+
 private:
-	unique_ptr<PixelsRelMetaData> rel_data;
+	std::shared_ptr<PixelsReader> initialPixelsReader;
+	List* files_list = NIL;
+    List* filters_list = NIL;
     uint64_t row_count;
     List* plan_options;
 };
 
 
-PixelsFdwPlanState* createPixelsFdwPlanState(string filename,
+PixelsFdwPlanState* createPixelsFdwPlanState(List* files,
+                                             List* filters,
 											 List* options);

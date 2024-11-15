@@ -6,6 +6,7 @@
 #define PIXELS_PIXELSRECORDREADERIMPL_H
 
 #include "PixelsRecordReader.h"
+#include "PixelsFilter.hpp"
 #include "physical/PhysicalReader.h"
 #include "vector/VectorizedRowBatch.h"
 #include "physical/Scheduler.h"
@@ -51,6 +52,7 @@ public:
 	void close() override;
 private:
     std::vector<int64_t> bufferIds;
+    std::vector<PixelsFilter*> filters;
     void prepareRead();
     void checkBeforeRead();
 	std::shared_ptr<VectorizedRowBatch> createEmptyEOFRowBatch(int size);
@@ -74,6 +76,7 @@ private:
 	bool endOfFile;
 	int curRGRowCount;
     bool enabledFilterPushDown;
+    std::shared_ptr<PixelsBitMask> filterMask;
 	std::shared_ptr<pixels::proto::RowGroupFooter> curRGFooter;
 	std::vector<std::shared_ptr<pixels::proto::ColumnEncoding>> curEncoding;
 	std::vector<int> curChunkBufferIndex;

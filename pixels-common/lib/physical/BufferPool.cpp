@@ -28,7 +28,7 @@ void BufferPool::Initialize(std::vector<uint32_t> colIds, std::vector<uint64_t> 
         currBufferIdx = 0;
         nextBufferIdx = 1;
 		directIoLib = std::make_shared<DirectIoLib>(fsBlockSize);
-		for(int i = 0; i < colIds.size(); i++) {
+		for(int i = 0; i < int(colIds.size()); i++) {
 			uint32_t colId = colIds.at(i);
             std::string columnName = columnNames[colId];
             for(int idx = 0; idx < 2; idx++) {
@@ -47,8 +47,8 @@ void BufferPool::Initialize(std::vector<uint32_t> colIds, std::vector<uint64_t> 
 		BufferPool::isInitialized = true;
 	} else {
 		// check if resize the buffer is needed
-		assert(colIds.size() == BufferPool::colCount);
-		for (int i = 0; i < colIds.size(); i++) {
+		assert(colIds.size() == int(BufferPool::colCount));
+		for (int i = 0; i < int(colIds.size()); i++) {
 			uint32_t colId = colIds.at(i);
 			uint64_t byte = bytes.at(i);
             std::string columnName = columnNames[colId];

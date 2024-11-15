@@ -4,6 +4,7 @@
 
 
 #include "PixelsReader.h"
+#include "PixelsFilter.hpp"
 #include "reader/PixelsRecordReader.h"
 
 struct PixelsReadLocalState {
@@ -26,6 +27,7 @@ struct PixelsReadLocalState {
 	int rowOffset;
 	std::vector<uint64_t> column_ids;
 	std::vector<std::string> column_names;
+	std::vector<PixelsFilter*> filters;
 	std::shared_ptr<PixelsReader> currReader;
     std::shared_ptr<PixelsReader> nextReader;
 	uint64_t curr_file_index;
