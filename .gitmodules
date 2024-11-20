@@ -1,0 +1,6 @@
+[submodule "pixels-cpp"]
+	path = pixels-cpp
+	url = https://github.com/neo-SunBoyan/pixels-cpp.git
+[submodule "third-party"]
+	path = third-party
+	url = https://github.com/protocolbuffers/protobuf.git

@@ -5,6 +5,7 @@
 
 #define STANDARD_VECTOR_SIZE 2048U
 #define PIXELS_FDW_MAX_DEC_WIDTH 18
+#define PIXELS_FDW_MAX_COLUMN_LENGTH INT64_MAX
 
 #include <fstream>
 #include <iostream>
@@ -88,7 +89,8 @@ private:
 	vector<int> column_map;
 	vector<Oid> types;
 	TupleDesc tuple_desc;
-	uint64_t cur_row_index = 0;
+	int64_t cur_row_index = -1;
+	map<int, int> masked_next_offsets;
 	unique_ptr<PixelsReadBindData> bind_data;
 	unique_ptr<PixelsReadLocalState> scan_data; 
 	unique_ptr<PixelsReadGlobalState> parallel_state;

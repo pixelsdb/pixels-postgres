@@ -289,12 +289,35 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
     }
 	if (scan_data->vectorizedRowBatch == nullptr) {
         scan_data->vectorizedRowBatch = currPixelsRecordReader->readBatch(false);
-		cur_row_index = 0;
+		cur_row_index = -1;
     }
     if (cur_row_index >= scan_data->vectorizedRowBatch->rowCount) {
 		scan_data->vectorizedRowBatch = currPixelsRecordReader->readBatch(false);
-		cur_row_index = 0;
+		cur_row_index = -1;
 	}
+	if (cur_row_index == -1) {
+		scan_data->vectorizedRowBatch->increment(-1);
+		masked_next_offsets.clear();
+		int masked_next_offset = 1;
+        for (int j = 0; j < scan_data->vectorizedRowBatch->count(); j++) {
+            if (enable_filter_pushdown && !currPixelsRecordReader->getFilterMask()->get(j)) {
+				masked_next_offset++;
+            }
+			else {
+				masked_next_offsets.insert(std::make_pair(j - masked_next_offset, masked_next_offset));
+				masked_next_offset = 1;
+			}
+        }
+		for (std::pair<int, int> offset : masked_next_offsets) {
+			std::cout << "offset: " << offset.first << " " << offset.second << std::endl;
+		}
+	}
+	if (masked_next_offsets.find(cur_row_index) == masked_next_offsets.end()) {
+		cur_row_index = PIXELS_FDW_MAX_COLUMN_LENGTH;
+		return false;
+	}
+	scan_data->vectorizedRowBatch->increment(masked_next_offsets[cur_row_index]);
+    cur_row_index += masked_next_offsets[cur_row_index];
 	for (int i = 0; i < scan_data->column_ids.size(); i++) {
 		int column_id = scan_data->column_ids.at(i);
 		auto col = scan_data->vectorizedRowBatch->cols.at(i);
@@ -355,8 +378,6 @@ bool PixelsFdwExecutionState::next(TupleTableSlot* slot) {
 			}	
 		}       
     }
-    cur_row_index++;
-	scan_data->vectorizedRowBatch->increment(1);
 	ExecStoreVirtualTuple(slot);
     return true;
 }

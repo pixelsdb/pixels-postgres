@@ -214,8 +214,8 @@ parse_filter_type(const char *str,
     regexs.emplace_back(std::regex("\\)"));
     regexs.emplace_back(std::regex("\\w+"));
 
-    std::vector<FilterType> ops;
-    std::vector<std::string> oprands;
+    std::vector<FilterType> optypes;
+    std::vector<std::string> opnames;
     
     while (split != rend) {
         std::string sub = *split++;
@@ -231,40 +231,42 @@ parse_filter_type(const char *str,
                  errmsg("pixels_fdw: invalid filter option \"%s\"",
                         sub.c_str())));
         }
-        ops.emplace_back(t);
-        oprands.emplace_back(sub);
+        optypes.emplace_back(t);
+        opnames.emplace_back(sub);
     }
 
-    ops.emplace_back(FT_MISMATCH);  // Invalid
+    optypes.emplace_back(FT_MISMATCH);  // Invalid
 
-    std::stack<FilterType> ops_stack;
-    std::stack<std::pair<std::string, bool>> oprands_stack;
+    std::stack<FilterType> optypes_stack;
+    std::stack<std::pair<std::string, bool>> opnames_stack;
 
     int ipriority[] = {-1, -1, 4, 2, 6, 6, 6, 6, 6, 0, 7, -1, -1};
     int opriority[] = {-1, -1, 3, 1, 5, 5, 5, 5, 5, 7, 0, -1, -1};
 
     std::stack<PixelsFilter*> filters;
 
-    ops_stack.push(FT_MISMATCH); // Invalid
-    for (int i = 0; i < ops.size(); ) {
-        if (ops.at(i) == FT_DIGIT || ops.at(i) == FT_DECIMAL) {
-            oprands_stack.push(std::make_pair(oprands.front(), true));
-            oprands.erase(oprands.begin());
+    optypes_stack.push(FT_MISMATCH); // Invalid
+    for (int i = 0; i < optypes.size(); ) {
+        if (optypes.at(i) == FT_DIGIT || optypes.at(i) == FT_DECIMAL) {
+            opnames_stack.push(std::make_pair(opnames.front(), true));
+            opnames.erase(opnames.begin());
             i++;
         }
-        else if (ops.at(i) == FT_WORD) {
-            oprands_stack.push(std::make_pair(oprands.front(), false));
-            oprands.erase(oprands.begin());
+        else if (optypes.at(i) == FT_WORD) {
+            char *refered_col = (char*)palloc0(opnames.front().length() + 1);
+            strcpy(refered_col, opnames.front().c_str());
+            refered_cols = lappend(refered_cols, makeString(refered_col));
+            opnames_stack.push(std::make_pair(opnames.front(), false));
+            opnames.erase(opnames.begin());
             i++;
-            refered_cols = lappend(refered_cols, makeString((char*)oprands.front().c_str()));
         }
         else {
-            if (opriority[ops.at(i)] > ipriority[ops_stack.top()]) {
-                ops_stack.push(ops.at(i));
+            if (opriority[optypes.at(i)] > ipriority[optypes_stack.top()]) {
+                optypes_stack.push(optypes.at(i));
                 i++;
             }
-            else if (opriority[ops.at(i)] < ipriority[ops_stack.top()]) {
-                switch (ops_stack.top()) {
+            else if (opriority[optypes.at(i)] < ipriority[optypes_stack.top()]) {
+                switch (optypes_stack.top()) {
                     case FT_AND: {
                         PixelsFilter *and_filter = createPixelsFilter(PixelsFilterType::CONJUNCTION_AND, std::string(), 0, 0, string_t());
                         if (filters.size() < 2) {
@@ -277,7 +279,7 @@ parse_filter_type(const char *str,
                         PixelsFilter *filter_1 = filters.top();
                         filters.pop();
                         and_filter->setLChild(filter_1);
-                        and_filter->setLChild(filter_2);
+                        and_filter->setRChild(filter_2);
                         filters.push(and_filter);
                         break;
                     }
@@ -293,20 +295,20 @@ parse_filter_type(const char *str,
                         PixelsFilter *filter_1 = filters.top();
                         filters.pop();
                         or_filter->setLChild(filter_1);
-                        or_filter->setLChild(filter_2);
+                        or_filter->setRChild(filter_2);
                         filters.push(or_filter);
                         break;
                     }
                     case FT_GTEQ: {
-                        if (oprands_stack.size() < 2) {
+                        if (opnames_stack.size() < 2) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
                                 errmsg("pixels_fdw: invalid filter option, parse error "));
                         }
-                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
-                        oprands_stack.pop();
-                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
-                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_2 = opnames_stack.top();
+                        opnames_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = opnames_stack.top();
+                        opnames_stack.pop();
                         if (oprand_1.second == oprand_2.second) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
@@ -315,8 +317,8 @@ parse_filter_type(const char *str,
                         if (!oprand_1.second) {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_2.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_2.first.c_str());
                             char *cname = (char*)palloc0(oprand_1.first.size());
                             strcpy(cname, oprand_1.first.c_str());
@@ -327,8 +329,8 @@ parse_filter_type(const char *str,
                         else {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_1.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_1.first.c_str());
                             char *cname = (char*)palloc0(oprand_2.first.size());
                             strcpy(cname, oprand_2.first.c_str());
@@ -339,15 +341,15 @@ parse_filter_type(const char *str,
                         break;
                     }
                     case FT_LTEQ: {
-                        if (oprands_stack.size() < 2) {
+                        if (opnames_stack.size() < 2) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
                                 errmsg("pixels_fdw: invalid filter option, parse error "));
                         }
-                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
-                        oprands_stack.pop();
-                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
-                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_2 = opnames_stack.top();
+                        opnames_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = opnames_stack.top();
+                        opnames_stack.pop();
                         if (oprand_1.second == oprand_2.second) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
@@ -356,8 +358,8 @@ parse_filter_type(const char *str,
                         if (!oprand_1.second) {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_2.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_2.first.c_str());
                             char *cname = (char*)palloc0(oprand_1.first.size());
                             strcpy(cname, oprand_1.first.c_str());
@@ -368,8 +370,8 @@ parse_filter_type(const char *str,
                         else {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_1.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_1.first.c_str());
                             char *cname = (char*)palloc0(oprand_2.first.size());
                             strcpy(cname, oprand_2.first.c_str());
@@ -380,15 +382,15 @@ parse_filter_type(const char *str,
                         break;
                     }
                     case FT_EQ: {
-                        if (oprands_stack.size() < 2) {
+                        if (opnames_stack.size() < 2) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
                                 errmsg("pixels_fdw: invalid filter option, parse error "));
                         }
-                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
-                        oprands_stack.pop();
-                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
-                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_2 = opnames_stack.top();
+                        opnames_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = opnames_stack.top();
+                        opnames_stack.pop();
                         if (oprand_1.second == oprand_2.second) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
@@ -397,8 +399,8 @@ parse_filter_type(const char *str,
                         if (!oprand_1.second) {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_2.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_2.first.c_str());
                             char *cname = (char*)palloc0(oprand_1.first.size());
                             strcpy(cname, oprand_1.first.c_str());
@@ -409,8 +411,8 @@ parse_filter_type(const char *str,
                         else {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_1.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_1.first.c_str());
                             char *cname = (char*)palloc0(oprand_2.first.size());
                             strcpy(cname, oprand_2.first.c_str());
@@ -421,15 +423,15 @@ parse_filter_type(const char *str,
                         break;
                     }
                     case FT_GT: {
-                        if (oprands_stack.size() < 2) {
+                        if (opnames_stack.size() < 2) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
                                 errmsg("pixels_fdw: invalid filter option, parse error "));
                         }
-                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
-                        oprands_stack.pop();
-                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
-                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_2 = opnames_stack.top();
+                        opnames_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = opnames_stack.top();
+                        opnames_stack.pop();
                         if (oprand_1.second == oprand_2.second) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
@@ -438,8 +440,8 @@ parse_filter_type(const char *str,
                         if (!oprand_1.second) {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_2.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_2.first.c_str());
                             char *cname = (char*)palloc0(oprand_1.first.size());
                             strcpy(cname, oprand_1.first.c_str());
@@ -450,8 +452,8 @@ parse_filter_type(const char *str,
                         else {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_1.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_1.first.c_str());
                             char *cname = (char*)palloc0(oprand_2.first.size());
                             strcpy(cname, oprand_2.first.c_str());
@@ -462,15 +464,15 @@ parse_filter_type(const char *str,
                         break;
                     }
                     case FT_LT: {
-                        if (oprands_stack.size() < 2) {
+                        if (opnames_stack.size() < 2) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
                                 errmsg("pixels_fdw: invalid filter option, parse error "));
                         }
-                        std::pair<std::string, bool> oprand_2 = oprands_stack.top();
-                        oprands_stack.pop();
-                        std::pair<std::string, bool> oprand_1 = oprands_stack.top();
-                        oprands_stack.pop();
+                        std::pair<std::string, bool> oprand_2 = opnames_stack.top();
+                        opnames_stack.pop();
+                        std::pair<std::string, bool> oprand_1 = opnames_stack.top();
+                        opnames_stack.pop();
                         if (oprand_1.second == oprand_2.second) {
                             ereport(ERROR,
                                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
@@ -479,8 +481,8 @@ parse_filter_type(const char *str,
                         if (!oprand_1.second) {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_2.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_2.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_2.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_2.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_2.first.c_str());
                             char *cname = (char*)palloc0(oprand_1.first.size());
                             strcpy(cname, oprand_1.first.c_str());
@@ -491,8 +493,8 @@ parse_filter_type(const char *str,
                         else {
                             long ivalue;
                             double dvalue;
-                            sscanf(oprand_1.first.c_str(), "%ll", ivalue);
-                            sscanf(oprand_1.first.c_str(), "%lf", dvalue);
+                            sscanf(oprand_1.first.c_str(), "%ld", &ivalue);
+                            sscanf(oprand_1.first.c_str(), "%lf", &dvalue);
                             string_t svalue = string_t(oprand_1.first.c_str());
                             char *cname = (char*)palloc0(oprand_2.first.size());
                             strcpy(cname, oprand_2.first.c_str());
@@ -508,15 +510,18 @@ parse_filter_type(const char *str,
                             errmsg("pixels_fdw: invalid filter option, parse error "));
                     }                     
                 }
-                ops_stack.pop();
+                optypes_stack.pop();
             }
             else {
-                ops_stack.pop();
+                optypes_stack.pop();
                 i++;
+            }
+            if (!opnames.empty()) {
+                opnames.erase(opnames.begin());
             }
         }
     }
-    if (oprands_stack.size() != 0 || filters.size() != 1) {
+    if (opnames_stack.size() != 0 || filters.size() != 1) {
         ereport(ERROR,
                 errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
                 errmsg("pixels_fdw: invalid filter option, parse error"));
@@ -540,7 +545,7 @@ search_and_merge(const char *col_name, PixelsFilter *root, PixelsFilter *&new_fi
         PixelsFilter *new_lchild = nullptr;
         search_and_merge(col_name, root->getLChild(), new_lchild);
         PixelsFilter *new_rchild = nullptr;
-        search_and_merge(col_name, root->getLChild(), new_rchild);
+        search_and_merge(col_name, root->getRChild(), new_rchild);
         if (!new_lchild && !new_rchild) {
             return;
         }
@@ -580,8 +585,7 @@ separate_filters(PixelsFilter* &all_filters,
 extern "C" void
 pixelsGetForeignRelSize(PlannerInfo *root,
                         RelOptInfo *baserel,
-                        Oid foreigntableid)
-{
+                        Oid foreigntableid) {
     PixelsFdwPlanState *fdw_private;
     char* filename = (char*)pixelsGetOption(foreigntableid,
                      						"filename");

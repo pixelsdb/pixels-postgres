@@ -307,7 +307,7 @@ PixelsFilter::ApplyFilter(std::shared_ptr<ColumnVector> vector,
             break;
         }
         case PixelsFilterType::COMPARE_GT: {
-            FilterOperationSwitch<PixelsFilterOp::GreaterThanEquals>(vector, integer_value, decimal_value, string_value, filterMask, type);
+            FilterOperationSwitch<PixelsFilterOp::GreaterThan>(vector, integer_value, decimal_value, string_value, filterMask, type);
             break;
         }
         case PixelsFilterType::COMPARE_LT: {
